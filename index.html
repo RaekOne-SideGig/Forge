@@ -95,7 +95,15 @@ input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appear
 .set-check.done{background:var(--cyan);border-color:var(--cyan);color:var(--ob)}
 .set-label{font-size:11px;color:var(--w3);text-align:center;min-width:80px}
 .ex-prev{font-size:11px;color:var(--w3);margin-top:4px;font-style:italic}
+
+.g-btn{display:flex;align-items:center;justify-content:center;gap:10px;font-size:14px;padding:12px 28px;background:#fff;color:#333;border:1px solid #ddd;border-radius:10px;cursor:pointer;font-weight:500;font-family:inherit;min-height:48px;width:260px}
+.g-btn:active{transform:scale(.97);background:#f5f5f5}
+.g-btn img{width:20px;height:20px}
+.user-avatar{width:28px;height:28px;border-radius:50%;border:1px solid var(--cyan)}
 </style></head><body>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <div class="app" id="app"></div>
 <script>
@@ -124,25 +132,55 @@ const SWAP={1:4,4:1,5:6,6:5,32:36,36:32,34:37,37:34,35:38,38:35,50:55,55:50,11:1
 const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DEF_NC=["Protein target hit","100g+ vegetables","Water > 3L","Creatine taken"];
 
-// ===== GOOGLE SHEETS SYNC =====
-let SHEET_ID="",SHEET_CONNECTED=false;
-async function syncToSheet(){
-  if(!SHEET_ID||!S)return;
-  try{
-    const data=JSON.stringify(S);
-    const url=`https://script.google.com/macros/s/${SHEET_ID}/exec`;
-    await fetch(url,{method:"POST",mode:"no-cors",body:JSON.stringify({user:S.user,data:data})});
-    SHEET_CONNECTED=true;
-  }catch(e){SHEET_CONNECTED=false}
+// ===== FIREBASE SYNC =====
+const firebaseConfig={
+  apiKey:"AIzaSyDMmdEUADNrmpCYwJ5QAvkpbsi-OUFRyH0",
+  authDomain:"forge-84eb0.firebaseapp.com",
+  databaseURL:"https://forge-84eb0-default-rtdb.firebaseio.com",
+  projectId:"forge-84eb0",
+  storageBucket:"forge-84eb0.firebasestorage.app",
+  messagingSenderId:"310182194636",
+  appId:"1:310182194636:web:8514bc705c911d9f69c169"
+};
+firebase.initializeApp(firebaseConfig);
+const fbDb=firebase.database();
+const fbAuth=firebase.auth();
+const gProvider=new firebase.auth.GoogleAuthProvider();
+let fbUser=null;
+let fbSyncing=false,fbConnected=false;
+
+function fbUserPath(){return "users/"+(fbUser?fbUser.uid:encodeURIComponent(S.user))}
+
+let syncTimer=null;
+function syncToFb(){
+  if(!S||fbSyncing)return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>{
+    fbSyncing=true;
+    fbDb.ref(fbUserPath()).set(S).then(()=>{fbConnected=true;fbSyncing=false;updSync()}).catch(e=>{fbConnected=false;fbSyncing=false;updSync();console.warn("Firebase write failed:",e)});
+  },1000);
 }
-async function loadFromSheet(){
-  if(!SHEET_ID||!S)return false;
+
+async function loadFromFb(){
+  if(!S)return false;
   try{
-    const url=`https://script.google.com/macros/s/${SHEET_ID}/exec?user=${encodeURIComponent(S.user)}`;
-    const r=await fetch(url);const j=await r.json();
-    if(j&&j.data){const d=JSON.parse(j.data);Object.assign(S,d);sv();SHEET_CONNECTED=true;return true}
-  }catch(e){SHEET_CONNECTED=false}
-  return false;
+    const snap=await fbDb.ref(fbUserPath()).once("value");
+    const d=snap.val();
+    if(d){
+      const localLog=(S.log||[]).length;
+      const remoteLog=(d.log||[]).length;
+      if(remoteLog>localLog){Object.assign(S,d);svLocal();fbConnected=true;updSync();return true}
+      else if(localLog>remoteLog){syncToFb();fbConnected=true;updSync();return false}
+      else{fbConnected=true;updSync();return false}
+    }else{syncToFb();fbConnected=true;updSync();return false}
+  }catch(e){fbConnected=false;updSync();console.warn("Firebase read failed:",e);return false}
+}
+
+function updSync(){
+  const el=document.getElementById("syncDot");
+  if(el)el.className="dot "+(fbConnected?"ok":"off");
+  const el2=document.getElementById("syncTxt");
+  if(el2)el2.textContent=fbConnected?"Synced":"Offline";
 }
 
 let S=null,cD=0,calY=2026,calM=4,athTab="exec",curMode="c",coachTab="arch";
@@ -169,11 +207,12 @@ function defDays(){return[
 ]}
 
 function ld(n){let r=null;try{r=localStorage.getItem("forge_"+n)}catch(e){}if(r)try{S=JSON.parse(r)}catch(e){S=null}
-if(!S)S={user:n,weight:"",days:defDays(),customEx:[],nxId:400,ltf:"all",chk:{bw:"",steps:"",sleep:"",cal:"",exMin:"",prot:""},log:[],wlogs:{},ncItems:DEF_NC.slice(),recLog:{},sheetId:""};
+if(!S)S={user:n,weight:"",days:defDays(),customEx:[],nxId:400,ltf:"all",chk:{bw:"",steps:"",sleep:"",cal:"",exMin:"",prot:""},log:[],wlogs:{},ncItems:DEF_NC.slice(),recLog:{}};
 if(!S.log)S.log=[];if(!S.wlogs)S.wlogs={};if(!S.ncItems)S.ncItems=DEF_NC.slice();if(!S.recLog)S.recLog={};if(!S.days)S.days=defDays();if(!S.sheetId)S.sheetId="";
-SHEET_ID=S.sheetId;sv()}
+sv()}
 
-function sv(){try{localStorage.setItem("forge_"+S.user,JSON.stringify(S));localStorage.setItem("forge_last",S.user)}catch(e){}syncToSheet()}
+function svLocal(){try{localStorage.setItem("forge_"+S.user,JSON.stringify(S));localStorage.setItem("forge_last",S.user)}catch(e){}}
+function sv(){svLocal();syncToFb()}
 
 function aDB(){return DDB.concat(S.customEx||[])}
 function gx(id){return aDB().find(e=>e.id===id)}
@@ -191,31 +230,56 @@ const BZ=[{m:"Traps",x:.30,y:.12,w:.40,h:.06},{m:"Shoulders",x:.10,y:.14,w:.16,h
 function pH(cid,z,v){const c=document.getElementById(cid);if(!c)return;const x=c.getContext("2d");c.width=140;c.height=290;x.clearRect(0,0,140,290);z.forEach(z=>{const s=v[z.m]||0;if(s<1)return;x.fillStyle=hC(s);x.beginPath();x.ellipse(z.x*140+z.w*70,z.y*290+z.h*145,z.w*77,z.h*160,0,0,Math.PI*2);x.fill()})}
 
 // ===== AUTO-LOGIN: skip login if user exists =====
-function init(){
-  let last="";try{last=localStorage.getItem("forge_last")||""}catch(e){}
-  if(last){try{const r=localStorage.getItem("forge_"+last);if(r){ld(last);if(!S.weight){showWeightPrompt();return}renderApp();return}}catch(e){}}
-  showLogin();
+async function init(){
+  fbAuth.onAuthStateChanged(async(user)=>{
+    if(user){
+      fbUser=user;
+      const displayName=user.displayName||user.email||"Athlete";
+      ld(displayName);
+      S.user=displayName;
+      S.email=user.email||"";
+      S.photoURL=user.photoURL||"";
+      svLocal();
+      const updated=await loadFromFb();
+      if(updated)ld(displayName);
+      S.user=displayName;S.email=user.email||"";S.photoURL=user.photoURL||"";
+      svLocal();
+      if(!S.weight){showWeightPrompt();return}
+      renderApp();
+    }else{
+      fbUser=null;
+      showLogin();
+    }
+  });
 }
 
 function showLogin(){
-  let saved=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith("forge_")&&k!=="forge_last")saved.push(k.slice(6))}}catch(e){}
-  document.getElementById("app").innerHTML='<div class="lw"><img src="'+AB+'" style="width:80px"><h2>Forge</h2><input class="li" id="lN" placeholder="Enter your name" onkeydown="if(event.key===\'Enter\')doL()"><button class="lb" onclick="doL()">Enter the forge</button>'+(saved.length?'<div class="lsv">Saved: '+saved.map(n=>'<button onclick="document.getElementById(\'lN\').value=\''+n+'\';doL()">'+n+'</button>').join(" ")+'</div>':'')+'</div>'}
+  document.getElementById("app").innerHTML='<div class="lw"><img src="'+AB+'" style="width:80px"><h2>Forge</h2><div style="font-size:13px;color:var(--w3);margin-bottom:8px">Sign in to sync across devices</div><button class="g-btn" onclick="doGoogleLogin()"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"> Sign in with Google</button></div>'}
 
-function doL(){const n=(document.getElementById("lN").value||"").trim();if(!n)return;ld(n);showWeightPrompt()}
+async function doGoogleLogin(){
+  try{await fbAuth.signInWithPopup(gProvider)}
+  catch(e){
+    if(e.code==="auth/popup-blocked"){
+      try{await fbAuth.signInWithRedirect(gProvider)}
+      catch(e2){alert("Sign in failed: "+e2.message)}
+    }else{alert("Sign in failed: "+e.message)}
+  }
+}
 
 function showWeightPrompt(){
-  document.getElementById("app").innerHTML='<div class="lw"><img src="'+AB+'" style="width:80px"><h2>Welcome, '+S.user+'</h2><div style="font-size:14px;color:var(--w2);margin-bottom:4px">Current weight (lbs)</div><input class="li" id="wIn" type="text" inputmode="decimal" placeholder="e.g. 181" value="'+(S.weight||"")+'" onkeydown="if(event.key===\'Enter\')doW()"><button class="lb" onclick="doW()">Continue</button></div>'}
+  const photo=S.photoURL?'<img src="'+S.photoURL+'" style="width:60px;height:60px;border-radius:50%;border:2px solid var(--cyan)">':'<img src="'+AB+'" style="width:80px">';
+  document.getElementById("app").innerHTML='<div class="lw">'+photo+'<h2>Welcome, '+S.user+'</h2><div style="font-size:14px;color:var(--w2);margin-bottom:4px">Current weight (lbs)</div><input class="li" id="wIn" type="text" inputmode="decimal" placeholder="e.g. 181" value="'+(S.weight||"")+'" onkeydown="if(event.key===\'Enter\')doW()"><button class="lb" onclick="doW()">Continue</button></div>'}
 
 function doW(){const w=(document.getElementById("wIn").value||"").trim();if(!w)return;S.weight=w;S.chk.bw=w;sv();renderApp()}
 
-function logout(){S=null;try{localStorage.removeItem("forge_last")}catch(e){}showLogin()}
+function logout(){S=null;fbUser=null;try{localStorage.removeItem("forge_last")}catch(e){}fbAuth.signOut();showLogin()}
 
 function cDT(add){return S.days.map((d,i)=>'<button class="dtab'+(i===cD?' a':'')+'" onclick="cD='+i+';rView()">'+d.label+'</button>').join("")+(add?'<button class="dtab-add" onclick="addDay()">+ Day</button>':"")}
 function addDay(){if(S.days.length>=7)return;S.days.push({label:"Day "+(S.days.length+1),exercises:[]});cD=S.days.length-1;sv();rView()}
 function delDay(){if(S.days.length<=1)return;S.days.splice(cD,1);if(cD>=S.days.length)cD=S.days.length-1;sv();rView()}
 
 function renderApp(){
-document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw"><button class="pb a" onclick="swP(\'c\')">Coach</button><button class="pb" onclick="swP(\'a\')">Athlete</button></div></div><div class="ctx" id="ctxBar"><span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><button class="lo" onclick="logout()">Logout</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';rView()}
+document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw"><button class="pb a" onclick="swP(\'c\')">Coach</button><button class="pb" onclick="swP(\'a\')">Athlete</button></div></div><div class="ctx" id="ctxBar">'+(S.photoURL?'<img class="user-avatar" src="'+S.photoURL+'">':'')+'<span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><span class="sync-bar" style="border:none;padding:0;margin:0;background:none"><span class="dot off" id="syncDot"></span><span id="syncTxt" style="font-size:10px">Syncing</span></span><button class="lo" onclick="logout()">Logout</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';rView()}
 
 function updCtxWt(){const el=document.getElementById("ctxWt");if(el)el.textContent=S.weight+" lbs"}
 
@@ -252,8 +316,7 @@ const el=document.getElementById("cC");
 let h='<div class="cd"><div class="ch"><h3>Nutrition compliance items</h3><button class="bs" onclick="addNC()">+ Add</button></div><div style="font-size:12px;color:var(--w3);margin-bottom:8px">These appear to the athlete for daily tracking</div>';
 h+=S.ncItems.map((item,i)=>'<div class="nc-item"><span>'+item+'</span><button class="dbtn" onclick="S.ncItems.splice('+i+',1);sv();rCoachRec()">Remove</button></div>').join("");
 h+='</div>';
-// Google Sheets config
-h+='<div class="cd"><div class="ch"><h3>Google Sheets sync</h3></div><div style="font-size:12px;color:var(--w3);margin-bottom:8px">Paste your Apps Script deployment ID to back up data</div><input class="fi" placeholder="Apps Script deployment ID" value="'+(S.sheetId||"")+'" onchange="S.sheetId=this.value;SHEET_ID=this.value;sv()" style="margin-bottom:8px"><div style="font-size:11px;color:var(--w3)">See setup instructions in the README</div></div>';
+
 el.innerHTML=h}
 
 function addNC(){
