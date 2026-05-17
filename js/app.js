@@ -223,7 +223,7 @@ function logout(){setS(null);setFbUser(null);try{localStorage.removeItem("forge_
 function cDT(add){
   const days=selectedAthlete&&athleteData&&athleteData.days?athleteData.days:S.days;
   if(!days||!days.length)return '<div style="color:var(--w3);font-size:12px;padding:8px">No workout days set up</div>';
-  return days.map((d,i)=>'<button class="dtab'+(i===cD?' a':'')+'" onclick="cD='+i+';rView()">'+d.label+'</button>').join("")+(add?'<button class="dtab-add" onclick="addDay()">+ Day</button>':"");
+  if(!Array.isArray(days))days=Object.values(days);return days.map((d,i)=>'<button class="dtab'+(i===cD?' a':'')+'" onclick="cD='+i+';rView()">'+d.label+'</button>').join("")+(add?'<button class="dtab-add" onclick="addDay()">+ Day</button>':"");
 }
 function addDay(){
   const days=selectedAthlete&&athleteData?athleteData.days:S.days;
@@ -375,7 +375,9 @@ if(!days||!Array.isArray(days)||!days.length){
   if(selectedAthlete&&athleteData){athleteData.days=[];days=athleteData.days}
   el.innerHTML='<div class="cd" style="text-align:center;padding:20px;color:var(--w3)">No workout days set up yet.</div><div style="display:flex;gap:8px;margin-top:8px"><button class="bs bsa" onclick="addDay()" style="flex:1;padding:10px">+ Create first day</button>'+(selectedAthlete?'<button class="bs" style="flex:1;padding:10px;color:var(--cyan);border-color:var(--cyan)" onclick="showCopyWorkout(\x27'+selectedAthlete+'\x27,\x27'+(athleteData?.user||'Athlete')+'\x27)">Copy from...</button>':'')+'</div>';return}
 if(cD>=days.length)cD=0;
-const d=cDay(cD);const wu=getWU();const v=cV(cD);
+const d=cDay(cD);
+if(d&&d.exercises&&!Array.isArray(d.exercises))d.exercises=Object.values(d.exercises);
+if(d&&!d.exercises)d.exercises=[];const wu=getWU();const v=cV(cD);
 let h='<div class="dtabs">'+cDT(true)+'</div><div class="cd"><div class="wdh"><input value="'+d.label+'" onchange="cDay(cD).label=this.value;sv();rView()" placeholder="Day name">';
 if(days.length>1)h+='<button class="bs" style="color:var(--red);border-color:var(--red)" onclick="delDay()">Delete</button>';
 h+='</div><div style="font-size:12px;color:var(--w2);margin:8px 0 4px">Warm-up (auto-matched)</div>';
