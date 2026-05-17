@@ -14,8 +14,8 @@ input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appear
 .psw{display:flex;gap:3px;background:var(--ob3);border-radius:8px;padding:2px;border:1px solid var(--sb)}
 .pb{font-size:12px;padding:8px 12px;border:1px solid transparent;background:transparent;border-radius:6px;cursor:pointer;color:var(--w3);font-family:inherit;min-height:36px}.pb.a{background:var(--cd);color:var(--cyan);border-color:var(--cyan);font-weight:600}
 .ctx{display:flex;gap:10px;font-size:12px;color:var(--w2);margin-bottom:12px;flex-wrap:wrap;align-items:center}.ctx .lo{font-size:11px;color:var(--w3);background:none;border:1px solid var(--sb);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;margin-left:auto;min-height:32px}
-.tabs{display:flex;gap:4px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
-.tab{font-size:12px;padding:8px 14px;border:1px solid var(--sb);background:transparent;border-radius:8px;cursor:pointer;color:var(--w3);font-family:inherit;white-space:nowrap;min-height:40px}.tab.a{color:var(--cyan);border-color:var(--cyan);background:var(--cd);font-weight:600}
+.tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;padding-bottom:2px}
+.tab{font-size:11px;padding:6px 9px;border:1px solid var(--sb);background:transparent;border-radius:6px;cursor:pointer;color:var(--w3);font-family:inherit;white-space:nowrap;min-height:34px}.tab.a{color:var(--cyan);border-color:var(--cyan);background:var(--cd);font-weight:600}
 .sec{display:none}.sec.a{display:block}
 .mg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
 .mc{background:var(--ob3);border-radius:8px;padding:10px;border:1px solid var(--sb)}.mc .l{font-size:11px;color:var(--w3)}.mc .v{font-size:18px;font-weight:600;margin-top:2px}
@@ -144,6 +144,11 @@ input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appear
 .move-btns{display:flex;flex-direction:column;gap:2px}
 .move-btn{background:none;border:1px solid var(--sb);border-radius:4px;color:var(--w3);cursor:pointer;font-size:10px;padding:2px 6px;font-family:inherit;min-height:24px;min-width:28px}
 .move-btn:active{background:var(--ob4);color:var(--cyan);border-color:var(--cyan)}
+
+.dgrip{cursor:grab;color:var(--w3);font-size:14px;touch-action:none;user-select:none;min-width:28px;min-height:32px;display:flex;align-items:center;justify-content:center}
+.dgrip:active{cursor:grabbing;color:var(--cyan)}
+.er.dact{opacity:.4;background:var(--ob4);border-radius:6px}
+.er.dtgt{border-top:2px solid var(--cyan)}
 </style></head><body>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -510,16 +515,18 @@ document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"
 // Set mode buttons based on role
 const modeEl=document.getElementById("modeButtons");
 if(S.role==="both"){
-  modeEl.innerHTML='<button class="pb a" onclick="swP(\'c\')">Coach</button><button class="pb" onclick="swP(\'a\')">Athlete</button>';
+  modeEl.innerHTML='<button class="pb'+(curMode==="c"?" a":"")+'" onclick="swP(\'c\')">Coach</button><button class="pb'+(curMode==="a"?" a":"")+'" onclick="swP(\'a\')">Athlete</button>';
 }else if(S.role==="coach"){
   curMode="c";
   modeEl.innerHTML='<button class="pb a">Coach</button>';
-  loadCoachAthletes();
 }else{
   curMode="a";
   modeEl.innerHTML='<button class="pb a">Athlete</button>';
 }
-rView()}
+// Load athletes then render
+if(S.role==="coach"||S.role==="both"){
+  loadCoachAthletes().then(()=>rView());
+}else{rView()}}
 
 function updCtxWt(){const el=document.getElementById("ctxWt");if(el)el.textContent=S.weight+" lbs"}
 
@@ -564,7 +571,7 @@ let lastSS="";h+=d.exercises.map((w,i)=>{const e=gx(w.exId);if(!e)return "";
 let row="";const curSS=w.ss||"";
 if(curSS&&curSS!==lastSS)row+='<div class="ss-group"><div class="ss-label">Superset '+curSS+'</div>';
 const restStr=w.rest!==undefined&&w.rest>0?' <span class="wr">Rest: '+(w.rest>=60?Math.floor(w.rest/60)+":"+(w.rest%60<10?"0":"")+w.rest%60:w.rest+"s")+'</span>':"";
-row+='<div class="er"><span class="en">'+e.n+'</span>'+(e.t==="cardio"?'<span class="ed">'+w.reps+'</span>':'<span class="ed">'+w.sets+" x "+addTips(w.reps)+'</span>')+'<span class="bg '+tB(e.t)+'" style="font-size:10px">'+(e.p==="Cardio"?"Cardio":e.p)+'</span>'+restStr+'<div class="move-btns"><button class="move-btn" onclick="moveEx('+i+',-1)">▲</button><button class="move-btn" onclick="moveEx('+i+',1)">▼</button></div><button class="sbtn" onclick="editEx('+i+')">Edit</button>'+(SWAP[w.exId]?'<button class="sbtn" onclick="cDay().exercises['+i+'].exId=SWAP['+w.exId+'];sv();rView()">Swap</button>':'')+'<button class="dbtn" onclick="cDay().exercises.splice('+i+',1);sv();rView()">Del</button></div>';
+row+='<div class="er" data-di="'+i+'"><span class="en">'+e.n+'</span>'+(e.t==="cardio"?'<span class="ed">'+w.reps+'</span>':'<span class="ed">'+w.sets+" x "+addTips(w.reps)+'</span>')+'<span class="bg '+tB(e.t)+'" style="font-size:10px">'+(e.p==="Cardio"?"Cardio":e.p)+'</span>'+restStr+'<span class="dgrip" data-di="'+i+'" ontouchstart="tds2(event,'+i+')" ontouchmove="tdm2(event)" ontouchend="tde2(event)" onmousedown="mds2(event,'+i+')">⠿</span><div class="move-btns"><button class="move-btn" onclick="moveEx('+i+',-1)">▲</button><button class="move-btn" onclick="moveEx('+i+',1)">▼</button></div><button class="sbtn" onclick="editEx('+i+')">Edit</button>'+(SWAP[w.exId]?'<button class="sbtn" onclick="cDay().exercises['+i+'].exId=SWAP['+w.exId+'];sv();rView()">Swap</button>':'')+'<button class="dbtn" onclick="cDay().exercises.splice('+i+',1);sv();rView()">Del</button></div>';
 const nextSS=d.exercises[i+1]?.ss||"";if(curSS&&nextSS!==curSS)row+='</div>';
 lastSS=curSS;return row}).join("");
 h+='</div>';
@@ -824,6 +831,12 @@ function svA(ctx){const nm=(document.getElementById("mN").value||"").trim();if(!
 // ===== TIMER =====
 const GLOSS={"AMRAP":"As Many Reps As Possible — push to near failure with good form","RIR":"Reps In Reserve — how many reps you could still do","RPE":"Rate of Perceived Exertion — 1 (easy) to 10 (max effort)","1RM":"One Rep Max — heaviest weight you can lift once","PR":"Personal Record","EMOM":"Every Minute On the Minute","HIIT":"High Intensity Interval Training","BW":"Bodyweight — no added weight","SS":"Superset — two exercises back to back with no rest","TUT":"Time Under Tension"};
 function addTips(s){return s.replace(/\b(AMRAP|RIR|RPE|1RM|PR|EMOM|HIIT|BW|SS|TUT)\b/g,(m)=>{const d=GLOSS[m];return d?'<span class="tip">'+m+'<span class="tiptext">'+d+'</span></span>':m})}
+
+let _di=null,_doi=null;
+function tds2(e,i){e.preventDefault();_di=i;const r=e.target.closest(".er");if(r)r.classList.add("dact")}
+function tdm2(e){if(_di===null)return;e.preventDefault();const y=e.touches[0].clientY;document.querySelectorAll(".er[data-di]").forEach(r=>{r.classList.remove("dtgt");const rc=r.getBoundingClientRect();if(y>rc.top&&y<rc.bottom){const idx=parseInt(r.dataset.di);if(idx!==_di){r.classList.add("dtgt");_doi=idx}}})}
+function tde2(e){document.querySelectorAll(".er").forEach(r=>{r.classList.remove("dact","dtgt")});if(_di!==null&&_doi!==null&&_doi!==_di){const exs=cDay().exercises;const item=exs.splice(_di,1)[0];exs.splice(_doi,0,item);sv();rView()}_di=null;_doi=null}
+function mds2(e,i){_di=i;const r=e.target.closest(".er");if(r)r.classList.add("dact");const mm=e2=>{if(_di===null)return;document.querySelectorAll(".er[data-di]").forEach(r=>{r.classList.remove("dtgt");const rc=r.getBoundingClientRect();if(e2.clientY>rc.top&&e2.clientY<rc.bottom){const idx=parseInt(r.dataset.di);if(idx!==_di){r.classList.add("dtgt");_doi=idx}}})};const mu=()=>{document.removeEventListener("mousemove",mm);document.removeEventListener("mouseup",mu);document.querySelectorAll(".er").forEach(r=>{r.classList.remove("dact","dtgt")});if(_di!==null&&_doi!==null&&_doi!==_di){const exs=cDay().exercises;const item=exs.splice(_di,1)[0];exs.splice(_doi,0,item);sv();rView()}_di=null;_doi=null};document.addEventListener("mousemove",mm);document.addEventListener("mouseup",mu)}
 
 function moveEx(i,dir){
   const exs=cDay().exercises;
