@@ -136,6 +136,14 @@ input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appear
 .athlete-item img{width:32px;height:32px;border-radius:50%}
 .athlete-item .aname{font-weight:500;flex:1}
 .invite-code{font-size:24px;font-weight:700;font-family:monospace;color:var(--cyan);letter-spacing:4px;text-align:center;padding:16px;background:var(--ob3);border:1px solid var(--cyan);border-radius:10px;margin:10px 0}
+
+.drag-handle{cursor:grab;padding:4px 6px;color:var(--w3);font-size:16px;touch-action:none;user-select:none;min-width:28px;min-height:32px;display:flex;align-items:center;justify-content:center}
+.drag-handle:active{cursor:grabbing;color:var(--cyan)}
+.er.dragging{opacity:.4;background:var(--ob4);border-radius:6px}
+.er.drag-over{border-top:2px solid var(--cyan);padding-top:6px}
+.move-btns{display:flex;flex-direction:column;gap:2px}
+.move-btn{background:none;border:1px solid var(--sb);border-radius:4px;color:var(--w3);cursor:pointer;font-size:10px;padding:2px 6px;font-family:inherit;min-height:24px;min-width:28px}
+.move-btn:active{background:var(--ob4);color:var(--cyan);border-color:var(--cyan)}
 </style></head><body>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -519,9 +527,32 @@ function rView(){if(curMode==="c")rCoachView();else rAthView()}
 
 function rCoachView(){
 const el=document.getElementById("mainV");
-el.innerHTML='<div class="tabs"><button class="tab'+(coachTab==="arch"?" a":"")+'" onclick="coachTab=\'arch\';rCoachView()">Architect</button><button class="tab'+(coachTab==="lib"?" a":"")+'" onclick="coachTab=\'lib\';rCoachView()">Exercise Library</button><button class="tab'+(coachTab==="rec"?" a":"")+'" onclick="coachTab=\'rec\';rCoachView()">Recovery</button><button class="tab'+(coachTab==="dash"?" a":"")+'" onclick="coachTab=\'dash\';rCoachView()">Dashboard</button></div><div id="cC"></div>';
-if(coachTab==="arch")rArch();else if(coachTab==="lib")rLib();else if(coachTab==="rec")rCoachRec();else rCoachDash()}
+let ctabs='<div class="tabs"><button class="tab'+(coachTab==="arch"?" a":"")+'" onclick="coachTab=\'arch\';rCoachView()">Architect</button><button class="tab'+(coachTab==="lib"?" a":"")+'" onclick="coachTab=\'lib\';rCoachView()">Exercise Library</button><button class="tab'+(coachTab==="rec"?" a":"")+'" onclick="coachTab=\'rec\';rCoachView()">Recovery</button><button class="tab'+(coachTab==="dash"?" a":"")+'" onclick="coachTab=\'dash\';rCoachView()">Dashboard</button>';
+if(S.role==="coach"||S.role==="both")ctabs+='<button class="tab'+(coachTab==="team"?" a":"")+'" onclick="coachTab=\'team\';rCoachView()">My Athletes</button>';
+ctabs+='</div>';
+let editLabel=selectedAthlete?coachAthletes.find(a=>a.uid===selectedAthlete)?.name||"Athlete":"My Program";
+let topBar=(S.role==="coach"||S.role==="both")?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:var(--ob3);border:1px solid var(--sb);border-radius:8px;font-size:13px"><span style="color:var(--w3)">Editing:</span><span style="color:var(--cyan);font-weight:600">'+editLabel+'</span>'+(selectedAthlete?'<button class="bs" style="margin-left:auto;font-size:11px;padding:3px 8px;min-height:28px" onclick="selectedAthlete=null;athleteData=null;rView()">Back to mine</button>':'')+'</div>':'';
+el.innerHTML=ctabs+topBar+'<div id="cC"></div>';
+if(coachTab==="arch")rArch();else if(coachTab==="lib")rLib();else if(coachTab==="rec")rCoachRec();else if(coachTab==="team")rTeam();else rCoachDash()}
 
+
+function rTeam(){
+const el=document.getElementById("cC");
+let h='<div class="cd"><div class="ch"><h3>Invite code</h3></div><div style="font-size:12px;color:var(--w3);margin-bottom:8px">Share this code with your athletes so they can link to you</div><div class="invite-code" onclick="copyInvite()">'+S.inviteCode+'</div><button class="bs" onclick="copyInvite()" style="width:100%;margin-top:6px">Copy code</button></div>';
+
+if(coachAthletes.length>0){
+h+='<div class="cd"><div class="ch"><h3>Your athletes ('+coachAthletes.length+')</h3></div><div class="athlete-roster">';
+h+=coachAthletes.map(a=>'<div class="athlete-item'+(selectedAthlete===a.uid?" active":"")+'" onclick="selectAthlete(\''+a.uid+'\')"><img src="'+(a.photo||AB)+'" onerror="this.src=\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22><rect fill=%22%23222%22 width=%2232%22 height=%2232%22 rx=%2216%22/></svg>\'"><span class="aname">'+(a.name||"Athlete")+'</span><span class="bg bb" style="font-size:10px">Select</span></div>').join("");
+h+='</div></div>';
+}else{
+h+='<div class="cd"><div style="text-align:center;padding:20px;color:var(--w3)"><div style="font-size:32px;margin-bottom:8px">👥</div><div style="font-size:13px">No athletes linked yet</div><div style="font-size:12px;margin-top:4px">Share your invite code to get started</div></div></div>';
+}
+el.innerHTML=h}
+
+function copyInvite(){
+  if(navigator.clipboard){navigator.clipboard.writeText(S.inviteCode).then(()=>alert("Copied: "+S.inviteCode))}
+  else{alert("Your invite code: "+S.inviteCode)}
+}
 function rArch(){
 const el=document.getElementById("cC");const d=cDay();const wu=getWU();const v=cV();
 let h='<div class="dtabs">'+cDT(true)+'</div><div class="cd"><div class="wdh"><input value="'+d.label+'" onchange="cDay().label=this.value;sv();rView()" placeholder="Day name">';
@@ -533,7 +564,7 @@ let lastSS="";h+=d.exercises.map((w,i)=>{const e=gx(w.exId);if(!e)return "";
 let row="";const curSS=w.ss||"";
 if(curSS&&curSS!==lastSS)row+='<div class="ss-group"><div class="ss-label">Superset '+curSS+'</div>';
 const restStr=w.rest!==undefined&&w.rest>0?' <span class="wr">Rest: '+(w.rest>=60?Math.floor(w.rest/60)+":"+(w.rest%60<10?"0":"")+w.rest%60:w.rest+"s")+'</span>':"";
-row+='<div class="er"><span class="en">'+e.n+'</span>'+(e.t==="cardio"?'<span class="ed">'+w.reps+'</span>':'<span class="ed">'+w.sets+" x "+addTips(w.reps)+'</span>')+'<span class="bg '+tB(e.t)+'" style="font-size:10px">'+(e.p==="Cardio"?"Cardio":e.p)+'</span>'+restStr+'<button class="sbtn" onclick="editEx('+i+')">Edit</button>'+(SWAP[w.exId]?'<button class="sbtn" onclick="cDay().exercises['+i+'].exId=SWAP['+w.exId+'];sv();rView()">Swap</button>':'')+'<button class="dbtn" onclick="cDay().exercises.splice('+i+',1);sv();rView()">Del</button></div>';
+row+='<div class="er"><span class="en">'+e.n+'</span>'+(e.t==="cardio"?'<span class="ed">'+w.reps+'</span>':'<span class="ed">'+w.sets+" x "+addTips(w.reps)+'</span>')+'<span class="bg '+tB(e.t)+'" style="font-size:10px">'+(e.p==="Cardio"?"Cardio":e.p)+'</span>'+restStr+'<div class="move-btns"><button class="move-btn" onclick="moveEx('+i+',-1)">▲</button><button class="move-btn" onclick="moveEx('+i+',1)">▼</button></div><button class="sbtn" onclick="editEx('+i+')">Edit</button>'+(SWAP[w.exId]?'<button class="sbtn" onclick="cDay().exercises['+i+'].exId=SWAP['+w.exId+'];sv();rView()">Swap</button>':'')+'<button class="dbtn" onclick="cDay().exercises.splice('+i+',1);sv();rView()">Del</button></div>';
 const nextSS=d.exercises[i+1]?.ss||"";if(curSS&&nextSS!==curSS)row+='</div>';
 lastSS=curSS;return row}).join("");
 h+='</div>';
@@ -600,7 +631,7 @@ if(!started){
 h+='<button class="start-workout-btn" onclick="startWorkout()">▶ Start '+d.label+'</button>';
 h+='<div class="cd">';
 }else{
-h+='<div class="workout-timer" id="wkTimer">⏱ '+fmtElapsed(meta.startTime)+'</div>';
+h+='<div class="workout-timer" id="wkTimer" style="display:flex;align-items:center;justify-content:center;gap:10px"><span id="wkTimeText">⏱ '+fmtElapsed(meta.startTime,meta.pausedTotal||0)+'</span>'+(!meta.paused?'<button class="bs" onclick="pauseWorkout()" style="padding:4px 12px;min-height:32px">Pause</button>':'<button class="bs" style="padding:4px 12px;min-height:32px;border-color:var(--cyan);color:var(--cyan)" onclick="resumeWorkout()">Resume</button>')+'</div>';
 h+='<div class="cd">';
 }
 
@@ -638,10 +669,10 @@ h+='<div style="display:flex;gap:8px;padding:4px 0;align-items:center"><span cla
 for(let s=0;s<w.sets;s++){
 const setData=wts[s]||{};
 const prevSet=prevData?prevData[s]:null;
-const prevLbs=prevSet?prevSet.lbs:"";
-const prevReps=prevSet?prevSet.reps:"";
-const curLbs=setData.lbs||"";
-const curReps=setData.reps||"";
+const prevLbs=prevSet?(typeof prevSet.lbs==="object"?String(prevSet.lbs.lbs||""):String(prevSet.lbs||"")):"";
+const prevReps=prevSet?(typeof prevSet.reps==="object"?String(prevSet.reps.reps||""):String(prevSet.reps||"")):"";
+const curLbs=setData.lbs?(typeof setData.lbs==="object"?"":String(setData.lbs)):"";
+const curReps=setData.reps?(typeof setData.reps==="object"?"":String(setData.reps)):"";
 const showLbs=curLbs||prevLbs;
 const showReps=curReps||prevReps;
 const isCarriedLbs=!curLbs&&!!prevLbs;
@@ -679,7 +710,7 @@ h+='<div class="overload-hint good">✓ Progressive overload</div>';
 }
 
 if(prevData){
-const prevStr=Object.values(prevData).filter(p=>p&&p.lbs).map((p,j)=>"S"+(j+1)+": "+p.lbs+"×"+(p.reps||"?")).join("  ");
+const prevStr=Object.entries(prevData).filter(([k,p])=>k!=="_meta"&&p&&p.lbs).map(([k,p],j)=>"S"+(j+1)+": "+p.lbs+"×"+(p.reps||"?")).join("  ");
 if(prevStr)h+='<div class="ex-prev">Last session: '+prevStr+'</div>';
 }
 }
@@ -700,7 +731,7 @@ if(started)startWkClock();
 
 function logSet(ei,si,field,v){const wk=wlk(cD);if(!S.wlogs[wk])S.wlogs[wk]={};if(!S.wlogs[wk][ei])S.wlogs[wk][ei]={};if(!S.wlogs[wk][ei][si])S.wlogs[wk][ei][si]={};S.wlogs[wk][ei][si][field]=v;sv()}
 function toggleSetDone(ei,si,btn){const wk=wlk(cD);if(!S.wlogs[wk])S.wlogs[wk]={};if(!S.wlogs[wk][ei])S.wlogs[wk][ei]={};if(!S.wlogs[wk][ei][si])S.wlogs[wk][ei][si]={};S.wlogs[wk][ei][si].done=!S.wlogs[wk][ei][si].done;btn.classList.toggle("done");sv()}
-function getPrevWts(di,ei){const t=new Date();for(let d=1;d<60;d++){const dt=new Date(t);dt.setDate(dt.getDate()-d);const ds=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");const k=ds+"_"+di;if(S.wlogs[k]&&S.wlogs[k][ei]){const data=S.wlogs[k][ei];if(typeof data==="object"&&!Array.isArray(data))return data;if(Array.isArray(data)){const conv={};data.forEach((v,i)=>{if(v)conv[i]={lbs:v,reps:""}});return conv}}}return null}
+function getPrevWts(di,ei){const t=new Date();for(let d=1;d<60;d++){const dt=new Date(t);dt.setDate(dt.getDate()-d);const ds=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");const k=ds+"_"+di;if(S.wlogs[k]&&S.wlogs[k][ei]){const data=S.wlogs[k][ei];const clean={};Object.entries(data).forEach(([si,v])=>{if(si==="_meta")return;if(typeof v==="object"&&v!==null){clean[si]={lbs:String(v.lbs||""),reps:String(v.reps||"")}}else if(typeof v==="string"||typeof v==="number"){clean[si]={lbs:String(v),reps:""}}});if(Object.keys(clean).length>0)return clean}}return null}
 // markDone replaced by endWorkout
 
 function rDash(){
@@ -793,11 +824,23 @@ function svA(ctx){const nm=(document.getElementById("mN").value||"").trim();if(!
 // ===== TIMER =====
 const GLOSS={"AMRAP":"As Many Reps As Possible — push to near failure with good form","RIR":"Reps In Reserve — how many reps you could still do","RPE":"Rate of Perceived Exertion — 1 (easy) to 10 (max effort)","1RM":"One Rep Max — heaviest weight you can lift once","PR":"Personal Record","EMOM":"Every Minute On the Minute","HIIT":"High Intensity Interval Training","BW":"Bodyweight — no added weight","SS":"Superset — two exercises back to back with no rest","TUT":"Time Under Tension"};
 function addTips(s){return s.replace(/\b(AMRAP|RIR|RPE|1RM|PR|EMOM|HIIT|BW|SS|TUT)\b/g,(m)=>{const d=GLOSS[m];return d?'<span class="tip">'+m+'<span class="tiptext">'+d+'</span></span>':m})}
+
+function moveEx(i,dir){
+  const exs=cDay().exercises;
+  const newIdx=i+dir;
+  if(newIdx<0||newIdx>=exs.length)return;
+  const temp=exs[i];
+  exs[i]=exs[newIdx];
+  exs[newIdx]=temp;
+  sv();rView();
+}
 function editEx(i){
 const w=cDay().exercises[i];const e=gx(w.exId);if(!e)return;
 const el=document.getElementById("ovl");
-el.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Edit: '+e.n+'</h3><button class="bs" onclick="clO()">Close</button></div>'+
-'<div style="font-size:12px;color:var(--w3);margin-bottom:8px">'+e.p+(e.s.length?" + "+e.s.join(", "):"")+" — "+e.t+'</div>'+
+el.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Edit exercise</h3><button class="bs" onclick="clO()">Close</button></div>'+
+'<label>Exercise</label><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:600;font-size:14px;flex:1" id="edExName">'+e.n+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.p+'</span></div>'+
+'<input class="fi" id="edSearch" placeholder="Search to swap exercise..." oninput="editSearch('+i+')" autocomplete="off" style="margin-bottom:4px"><div id="edSearchRes"></div>'+
+'<input type="hidden" id="edExId" value="'+w.exId+'">'+
 (e.t==="cardio"?
 '<label>Duration</label><input class="fi" id="edReps" value="'+w.reps+'">'
 :
@@ -810,9 +853,26 @@ el.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class
 '</div></div>';
 el.style.display="block"}
 
+function editSearch(idx){
+const q=(document.getElementById("edSearch").value||"").toLowerCase();
+if(q.length<2){document.getElementById("edSearchRes").innerHTML="";return}
+const res=aDB().filter(e=>(e.n+" "+e.p+" "+(e.s||[]).join(" ")).toLowerCase().includes(q)).slice(0,6);
+document.getElementById("edSearchRes").innerHTML=res.length?'<div class="sr">'+res.map(e=>'<div class="sri" onclick="pickEditEx('+e.id+')"><span style="font-weight:500;flex:1">'+e.n+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.t+'</span><span style="font-size:11px;color:var(--w3)">'+e.p+'</span></div>').join("")+'</div>':'<div style="font-size:12px;color:var(--w3);padding:6px">No matches</div>'}
+
+function pickEditEx(newId){
+const e=gx(newId);if(!e)return;
+document.getElementById("edExId").value=newId;
+document.getElementById("edExName").textContent=e.n;
+document.getElementById("edSearch").value="";
+document.getElementById("edSearchRes").innerHTML="";
+}
+
 function saveEdit(i){
-const w=cDay().exercises[i];const e=gx(w.exId);
-if(e.t!=="cardio"){w.sets=parseInt(document.getElementById("edSets").value)||3}
+const w=cDay().exercises[i];
+const newExId=parseInt(document.getElementById("edExId").value);
+if(newExId&&newExId!==w.exId)w.exId=newExId;
+const e=gx(w.exId);
+if(e&&e.t!=="cardio"){w.sets=parseInt(document.getElementById("edSets").value)||3}
 w.reps=document.getElementById("edReps").value||"10";
 w.rest=parseInt(document.getElementById("edRest").value)||0;
 const ss=(document.getElementById("edSS").value||"").trim();
@@ -887,14 +947,35 @@ function startWkClock(){
   clearInterval(wkClockInt);
   wkClockInt=setInterval(()=>{
     const wk=wlk(cD);const meta=S.wlogs[wk]?._meta;
-    if(!meta||!meta.startTime)return;
-    const el=document.getElementById("wkTimer");
-    if(el)el.textContent="⏱ "+fmtElapsed(meta.startTime);
+    if(!meta||!meta.startTime||meta.paused)return;
+    const el=document.getElementById("wkTimeText");
+    if(el)el.textContent="⏱ "+fmtElapsed(meta.startTime,meta.pausedTotal||0);
   },1000);
 }
+function pauseWorkout(){
+  const wk=wlk(cD);const meta=S.wlogs[wk]?._meta;
+  if(!meta)return;
+  meta.paused=true;
+  meta.pauseStart=Date.now();
+  clearInterval(wkClockInt);
+  sv();rExec();
+}
 
-function fmtElapsed(startMs){
-  const diff=Math.floor((Date.now()-startMs)/1000);
+function resumeWorkout(){
+  const wk=wlk(cD);const meta=S.wlogs[wk]?._meta;
+  if(!meta||!meta.pauseStart)return;
+  const pausedFor=Date.now()-meta.pauseStart;
+  meta.pausedTotal=(meta.pausedTotal||0)+pausedFor;
+  meta.paused=false;
+  delete meta.pauseStart;
+  sv();rExec();
+}
+
+
+function fmtElapsed(startMs,pausedMs){
+  const pm=pausedMs||0;
+  const diff=Math.floor((Date.now()-startMs-pm)/1000);
+  if(diff<0)return "0:00";
   const h=Math.floor(diff/3600);const m=Math.floor((diff%3600)/60);const s=diff%60;
   if(h>0)return h+":"+(m<10?"0":"")+m+":"+(s<10?"0":"")+s;
   return m+":"+(s<10?"0":"")+s;
@@ -906,7 +987,8 @@ function endWorkout(){
   if(!S.wlogs[wk]._meta)S.wlogs[wk]._meta={};
   S.wlogs[wk]._meta.endTime=Date.now();
   const startT=S.wlogs[wk]._meta.startTime||Date.now();
-  const duration=Math.floor((Date.now()-startT)/1000);
+  const pausedTotal=S.wlogs[wk]._meta.pausedTotal||0;
+  const duration=Math.floor((Date.now()-startT-pausedTotal)/1000);
   clearInterval(wkClockInt);
   // Save to log
   S.log.push({
