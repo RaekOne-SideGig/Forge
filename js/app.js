@@ -6,7 +6,7 @@ import { fmtRest, fmtElapsed, calcAvgDuration, addTips } from './utils/helpers.j
 import { getOverloadClass, getOverloadHint } from './utils/overload.js';
 import { exportData } from './utils/export.js';
 import { fbDb, fbAuth, gProvider, fbUser, setFbUser, syncToFb, loadFromFb, updSync, loadCoachAthletes as _loadCoachAthletes, genInviteCode, fbUserPath} from './firebase.js';
-import { S, setS, ld, svLocal, sv, aDB, gx, isL, tB, hC, tds, wlk, compColor, cDay, cV } from './state.js';
+import { S, setS, ld, svLocal, sv as _sv, aDB, gx, isL, tB, hC, tds, wlk, compColor, cDay as _cDay, cV as _cV } from './state.js';
 import { showRestPopup, skipRest } from './components/rest-timer.js';
 import { renderExerciseChart, renderVolumeChart } from './components/charts.js';
 import { renderHeatMap } from './components/heatmap.js';
@@ -17,6 +17,39 @@ const AB = "assets/anvil-big.png";
 const AT = "assets/anvil-small.png";
 const BF = "assets/body-front.jpg";
 const BB = "assets/body-back.jpg";
+
+// Athlete-aware wrappers
+function cDay(d) {
+  const di = d !== undefined ? d : cD;
+  if (selectedAthlete && athleteData && athleteData.days) return athleteData.days[di] || athleteData.days[0];
+  return _cDay(di);
+}
+function cV(d) {
+  const di = d !== undefined ? d : cD;
+  if (selectedAthlete && athleteData && athleteData.days) {
+    const v = {};
+    const day = cDay(di);
+    if (!day) return v;
+    day.exercises.forEach(w => {
+      const e = gx(w.exId);
+      if (!e || e.p === "Cardio") return;
+      v[e.p] = (v[e.p] || 0) + w.sets;
+      (e.s || []).forEach(s => { if (s !== "Cardio") v[s] = (v[s] || 0) + Math.ceil(w.sets / 2); });
+    });
+    return v;
+  }
+  return _cV(di);
+}
+function sv() {
+  if (selectedAthlete && athleteData) {
+    svLocal();
+    fbDb.ref("users/"+selectedAthlete).update({days: athleteData.days || []}).then(()=>{
+      console.log("Athlete data saved");
+    }).catch(e=>console.error("Athlete save failed:",e));
+  } else {
+    _sv();
+  }
+}
 
 
 let cD=0,calY=2026,calM=4,athTab="exec",curMode="c",coachTab="arch";
@@ -163,8 +196,19 @@ function doW(){const w=(document.getElementById("wIn").value||"").trim();if(!w)r
 function logout(){setS(null);setFbUser(null);try{localStorage.removeItem("forge_last")}catch(e){}fbAuth.signOut();showLogin()}
 
 function cDT(add){return S.days.map((d,i)=>'<button class="dtab'+(i===cD?' a':'')+'" onclick="cD='+i+';rView()">'+d.label+'</button>').join("")+(add?'<button class="dtab-add" onclick="addDay()">+ Day</button>':"")}
-function addDay(){if(S.days.length>=7)return;S.days.push({label:"Day "+(S.days.length+1),exercises:[]});cD=S.days.length-1;sv();rView()}
-function delDay(){if(S.days.length<=1)return;S.days.splice(cD,1);if(cD>=S.days.length)cD=S.days.length-1;sv();rView()}
+function addDay(){
+  const days=selectedAthlete&&athleteData?athleteData.days:S.days;
+  if(days.length>=7)return;
+  days.push({label:"Day "+(days.length+1),exercises:[]});
+  cD=days.length-1;sv();rView();
+}
+function delDay(){
+  const days=selectedAthlete&&athleteData?athleteData.days:S.days;
+  if(days.length<=1)return;
+  days.splice(cD,1);
+  if(cD>=days.length)cD=days.length-1;
+  sv();rView();
+}
 
 
 function getActiveDays(){
@@ -272,7 +316,7 @@ function copyInvite(){
 function rArch(){
 const el=document.getElementById("cC");const d=cDay(cD);const wu=getWU();const v=cV(cD);
 let h='<div class="dtabs">'+cDT(true)+'</div><div class="cd"><div class="wdh"><input value="'+d.label+'" onchange="cDay(cD).label=this.value;sv();rView()" placeholder="Day name">';
-if(S.days.length>1)h+='<button class="bs" style="color:var(--red);border-color:var(--red)" onclick="delDay()">Delete</button>';
+if(cDay(cD)&&(selectedAthlete?athleteData.days:S.days).length>1)h+='<button class="bs" style="color:var(--red);border-color:var(--red)" onclick="delDay()">Delete</button>';
 h+='</div><div style="font-size:12px;color:var(--w2);margin:8px 0 4px">Warm-up (auto-matched)</div>';
 h+=wu.map(w=>{const ex=aDB().find(e=>e.n===w.name);return '<div class="er"><span class="en">'+w.name+'</span><span class="bg '+(ex?tB(ex.t):"ba")+'" style="font-size:10px">'+(ex?ex.t:"mobility")+'</span><span class="wr">'+w.reason+'</span></div>'}).join("");
 h+='<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px"><span style="font-size:12px;color:var(--w2)">Working sets &amp; cardio</span><button class="bs" onclick="showAdd(\'working\')">+ Add</button></div>';
@@ -978,24 +1022,9 @@ Object.defineProperty(window, 'calY', { get: () => calY, set: (v) => { calY = v;
 Object.defineProperty(window, 'calM', { get: () => calM, set: (v) => { calM = v; } });
 Object.defineProperty(window, 'selectedAthlete', { get: () => selectedAthlete, set: (v) => { selectedAthlete = v; } });
 Object.defineProperty(window, 'athleteData', { get: () => athleteData, set: (v) => { athleteData = v; } });
-window.cDay = function(d) {
-  const di = d !== undefined ? d : cD;
-  if (selectedAthlete && athleteData && athleteData.days) return athleteData.days[di] || athleteData.days[0];
-  return cDay(di);
-};
+window.cDay = cDay;
 window.cV = (d) => cV(d !== undefined ? d : cD);
-window.sv = function() {
-  if (selectedAthlete && athleteData) {
-    // Save locally first
-    svLocal();
-    // Push athlete days to Firebase
-    fbDb.ref("users/"+selectedAthlete).update({days: athleteData.days || []}).then(()=>{
-      console.log("Athlete data saved to Firebase");
-    }).catch(e=>console.error("Failed to save athlete data:",e));
-  } else {
-    sv();
-  }
-};
+window.sv = sv;
 window.gx = gx;
 window.aDB = aDB;
 window.isL = isL;
