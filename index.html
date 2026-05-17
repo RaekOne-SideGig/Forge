@@ -465,7 +465,7 @@ function genInviteCode(){
 }
 
 function showLinkCoach(){
-  document.getElementById("app").innerHTML='<div class="lw"><h2>Link to your coach</h2><div style="font-size:13px;color:var(--w3);margin-bottom:8px;text-align:center">Enter the invite code your coach gave you, or skip to train solo</div><input class="li" id="invCode" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')linkCoach()"><button class="lb" onclick="linkCoach()">Link to coach</button><button style="background:none;border:none;color:var(--w3);cursor:pointer;font-size:13px;margin-top:12px;font-family:inherit" onclick="S.role=\'both\';sv();renderApp()">Skip — I\'ll coach myself</button></div>';
+  document.getElementById("app").innerHTML='<div class="lw"><h2>Link to your coach</h2><div style="font-size:13px;color:var(--w3);margin-bottom:8px;text-align:center">Enter the invite code your coach gave you, or skip to train solo</div><input class="li" id="invCode" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')linkCoach()"><button class="lb" onclick="linkCoach()">Link to coach</button><button style="background:none;border:none;color:var(--w3);cursor:pointer;font-size:13px;margin-top:12px;font-family:inherit" onclick="S.role=\'both\';if(!S.inviteCode)S.inviteCode=genInviteCode();sv();setTimeout(()=>renderApp(),100)">Skip — I\'ll coach myself</button></div>';
 }
 
 async function linkCoach(){
@@ -477,12 +477,12 @@ async function linkCoach(){
     if(!data){alert("Invite code not found. Check with your coach.");return}
     S.linkedCoach=data.uid;
     S.coachName=data.name||"Coach";
-    // Register self as athlete under coach
     if(fbUser){
       await fbDb.ref("users/"+data.uid+"/athletes/"+fbUser.uid).set({name:S.user,photo:S.photoURL||"",uid:fbUser.uid});
     }
     sv();
-    renderApp();
+    // Small delay to ensure DOM is ready after sv triggers
+    setTimeout(()=>renderApp(),100);
   }catch(e){alert("Error linking: "+e.message)}
 }
 function showLogin(){
@@ -511,9 +511,10 @@ function addDay(){if(S.days.length>=7)return;S.days.push({label:"Day "+(S.days.l
 function delDay(){if(S.days.length<=1)return;S.days.splice(cD,1);if(cD>=S.days.length)cD=S.days.length-1;sv();rView()}
 
 function renderApp(){
-document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw"><button class="pb a" onclick="swP(\'c\')">Coach</button><button class="pb" onclick="swP(\'a\')">Athlete</button></div></div><div class="ctx" id="ctxBar">'+(S.photoURL?'<img class="user-avatar" src="'+S.photoURL+'">':'')+'<span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><span class="sync-bar" style="border:none;padding:0;margin:0;background:none"><span class="dot off" id="syncDot"></span><span id="syncTxt" style="font-size:10px">Syncing</span></span><button class="lo" onclick="logout()">Logout</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';
+document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw" id="modeButtons"></div></div><div class="ctx" id="ctxBar">'+(S.photoURL?'<img class="user-avatar" src="'+S.photoURL+'">':'')+'<span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><span class="sync-bar" style="border:none;padding:0;margin:0;background:none"><span class="dot off" id="syncDot"></span><span id="syncTxt" style="font-size:10px">Syncing</span></span><button class="lo" onclick="logout()">Logout</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';
 // Set mode buttons based on role
 const modeEl=document.getElementById("modeButtons");
+if(!modeEl){console.warn("modeButtons not found");return}
 if(S.role==="both"){
   modeEl.innerHTML='<button class="pb'+(curMode==="c"?" a":"")+'" onclick="swP(\'c\')">Coach</button><button class="pb'+(curMode==="a"?" a":"")+'" onclick="swP(\'a\')">Athlete</button>';
 }else if(S.role==="coach"){
@@ -525,7 +526,7 @@ if(S.role==="both"){
 }
 // Load athletes then render
 if(S.role==="coach"||S.role==="both"){
-  loadCoachAthletes().then(()=>rView());
+  loadCoachAthletes().then(()=>rView()).catch(()=>rView());
 }else{rView()}}
 
 function updCtxWt(){const el=document.getElementById("ctxWt");if(el)el.textContent=S.weight+" lbs"}
