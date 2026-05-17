@@ -149,6 +149,9 @@ input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appear
 .dgrip:active{cursor:grabbing;color:var(--cyan)}
 .er.dact{opacity:.4;background:var(--ob4);border-radius:6px}
 .er.dtgt{border-top:2px solid var(--cyan)}
+
+.del-btn{font-size:11px;color:var(--red);background:none;border:1px solid var(--red);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;min-height:32px}
+.del-btn:active{background:rgba(255,77,106,.15)}
 </style></head><body>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -286,7 +289,8 @@ function syncToFb(){
   clearTimeout(syncTimer);
   syncTimer=setTimeout(()=>{
     fbSyncing=true;
-    fbDb.ref(fbUserPath()).set(S).then(()=>{fbConnected=true;fbSyncing=false;updSync()}).catch(e=>{fbConnected=false;fbSyncing=false;updSync();console.warn("Firebase write failed:",e)});
+    const syncData=Object.assign({},S);delete syncData.athletes;
+    fbDb.ref(fbUserPath()).update(syncData).then(()=>{fbConnected=true;fbSyncing=false;updSync()}).catch(e=>{fbConnected=false;fbSyncing=false;updSync();console.warn("Firebase write failed:",e)});
   },1000);
 }
 
@@ -420,6 +424,38 @@ function getActiveData(){
   if(S.role==="coach"&&athleteData)return athleteData;
   return S;
 }
+
+async function deleteProfile(){
+  if(!confirm("DELETE YOUR PROFILE?\n\nThis will permanently erase all your data including workouts, logs, and settings.\n\nThis cannot be undone."))return;
+  if(!confirm("Are you absolutely sure? Type OK in the next prompt to confirm."))return;
+  const check=prompt("Type DELETE to confirm permanent deletion:");
+  if(check!=="DELETE"){alert("Deletion cancelled.");return}
+  try{
+    // Remove from coach's athlete list if linked
+    if(S.linkedCoach&&fbUser){
+      await fbDb.ref("users/"+S.linkedCoach+"/athletes/"+fbUser.uid).remove();
+    }
+    // Remove invite code
+    if(S.inviteCode){
+      await fbDb.ref("invites/"+S.inviteCode).remove();
+    }
+    // Remove all athlete links if coach
+    if(S.athletes&&fbUser){
+      for(const a of Object.values(S.athletes)){
+        if(a.uid)await fbDb.ref("users/"+a.uid+"/linkedCoach").remove();
+      }
+    }
+    // Delete user data from Firebase
+    if(fbUser)await fbDb.ref(fbUserPath()).remove();
+    // Clear local storage
+    try{localStorage.removeItem("forge_"+S.user);localStorage.removeItem("forge_last")}catch(e){}
+    // Sign out
+    S=null;fbUser=null;
+    await fbAuth.signOut();
+    alert("Profile deleted.");
+    showLogin();
+  }catch(e){alert("Error deleting: "+e.message)}
+}
 async function init(){
   fbAuth.onAuthStateChanged(async(user)=>{
     if(user){
@@ -515,7 +551,7 @@ function addDay(){if(S.days.length>=7)return;S.days.push({label:"Day "+(S.days.l
 function delDay(){if(S.days.length<=1)return;S.days.splice(cD,1);if(cD>=S.days.length)cD=S.days.length-1;sv();rView()}
 
 function renderApp(){
-document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw" id="modeButtons"></div></div><div class="ctx" id="ctxBar">'+(S.photoURL?'<img class="user-avatar" src="'+S.photoURL+'">':'')+'<span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><span class="sync-bar" style="border:none;padding:0;margin:0;background:none"><span class="dot off" id="syncDot"></span><span id="syncTxt" style="font-size:10px">Syncing</span></span><button class="lo" onclick="logout()">Logout</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';
+document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw" id="modeButtons"></div></div><div class="ctx" id="ctxBar">'+(S.photoURL?'<img class="user-avatar" src="'+S.photoURL+'">':'')+'<span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><span class="sync-bar" style="border:none;padding:0;margin:0;background:none"><span class="dot off" id="syncDot"></span><span id="syncTxt" style="font-size:10px">Syncing</span></span><button class="lo" onclick="logout()">Logout</button><button class="del-btn" onclick="deleteProfile()">Delete</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';
 // Set mode buttons based on role
 const modeEl=document.getElementById("modeButtons");
 if(!modeEl){console.warn("modeButtons not found");return}
@@ -708,10 +744,11 @@ const started=!!meta.startTime;
 let h='<div class="dtabs">'+cDT(false)+'</div>';
 
 if(!started){
-h+='<button class="start-workout-btn" onclick="startWorkout()">▶ Start '+d.label+'</button>';
+var avgDur=calcAvgDuration(cD);
+h+=(avgDur?'<div style="font-size:12px;color:var(--w3);text-align:center;margin-bottom:8px">Avg duration: '+avgDur+'</div>':'')+'<button class="start-workout-btn" onclick="startWorkout()">▶ Start '+d.label+'</button>';
 h+='<div class="cd">';
 }else{
-h+='<div class="workout-timer" id="wkTimer" style="display:flex;align-items:center;justify-content:center;gap:10px"><span id="wkTimeText">⏱ '+fmtElapsed(meta.startTime,meta.pausedTotal||0)+'</span>'+(!meta.paused?'<button class="bs" onclick="pauseWorkout()" style="padding:4px 12px;min-height:32px">Pause</button>':'<button class="bs" style="padding:4px 12px;min-height:32px;border-color:var(--cyan);color:var(--cyan)" onclick="resumeWorkout()">Resume</button>')+'</div>';
+h+='<div class="workout-timer" id="wkTimer" style="display:flex;align-items:center;justify-content:center;gap:10px"><span id="wkTimeText">⏱ '+fmtElapsed(meta.startTime,meta.pausedTotal||0)+'</span>'+(!meta.paused?'<button class="bs" onclick="pauseWorkout()" style="padding:4px 12px;min-height:32px">Pause</button>':'<button class="bs" style="padding:4px 12px;min-height:32px;border-color:var(--cyan);color:var(--cyan)" onclick="resumeWorkout()">Resume</button>')+'<button class="bs" onclick="cancelWorkout()" style="padding:4px 12px;min-height:32px;border-color:var(--red);color:var(--red)">Cancel</button></div>';
 h+='<div class="cd">';
 }
 
@@ -1143,6 +1180,21 @@ function resumeWorkout(){
   sv();rExec();
 }
 
+function cancelWorkout(){
+  if(!confirm("Cancel this workout? Your logged sets will be kept but the workout won't be saved to your history."))return;
+  const wk=wlk(cD);
+  if(S.wlogs[wk]&&S.wlogs[wk]._meta){
+    delete S.wlogs[wk]._meta.startTime;
+    delete S.wlogs[wk]._meta.endTime;
+    delete S.wlogs[wk]._meta.paused;
+    delete S.wlogs[wk]._meta.pauseStart;
+    delete S.wlogs[wk]._meta.pausedTotal;
+  }
+  clearInterval(wkClockInt);
+  sv();rExec();
+}
+
+
 
 function fmtElapsed(startMs,pausedMs){
   const pm=pausedMs||0;
@@ -1174,6 +1226,14 @@ function endWorkout(){
   rExec();
 }
 
+
+function calcAvgDuration(dayIdx){
+  const durations=S.log.filter(lg=>lg.dayIdx==dayIdx&&lg.duration&&lg.duration>0).map(lg=>lg.duration);
+  if(durations.length===0)return null;
+  const avg=Math.round(durations.reduce((a,b)=>a+b,0)/durations.length);
+  const m=Math.floor(avg/60);const s=avg%60;
+  return m+" min"+(s>0?" "+s+"s":"")+" ("+durations.length+" sessions)";
+}
 function fmtRest(s){if(s>=60){const m=Math.floor(s/60);const sec=s%60;return m+":"+(sec<10?"0":"")+sec}return s+"s"}
 // Old timer removed - replaced by per-set rest popup
 function swP(p){curMode=p;document.querySelectorAll(".pb").forEach(b=>b.classList.remove("a"));event.target.closest(".pb").classList.add("a");rView()}
