@@ -5,7 +5,7 @@ import { SWAP, MN, DEF_NC, MS, defDays, GLOSS } from './data/defaults.js';
 import { fmtRest, fmtElapsed, calcAvgDuration, addTips } from './utils/helpers.js';
 import { getOverloadClass, getOverloadHint } from './utils/overload.js';
 import { exportData } from './utils/export.js';
-import { fbDb, fbAuth, gProvider, fbUser, setFbUser, syncToFb, loadFromFb, updSync, loadCoachAthletes as _loadCoachAthletes, genInviteCode } from './firebase.js';
+import { fbDb, fbAuth, gProvider, fbUser, setFbUser, syncToFb, loadFromFb, updSync, loadCoachAthletes as _loadCoachAthletes, genInviteCode, fbUserPath} from './firebase.js';
 import { S, setS, ld, svLocal, sv, aDB, gx, isL, tB, hC, tds, wlk, compColor, cDay, cV } from './state.js';
 import { showRestPopup, skipRest } from './components/rest-timer.js';
 import { renderExerciseChart, renderVolumeChart } from './components/charts.js';
@@ -71,7 +71,7 @@ async function deleteProfile(){
       }
     }
     // Delete user data from Firebase
-    if(fbUser)await fbDb.ref(fbUserPath()).remove();
+    if(fbUser)await fbDb.ref(fbUserPath(S)).remove();
     // Clear local storage
     try{localStorage.removeItem("forge_"+S.user);localStorage.removeItem("forge_last")}catch(e){}
     // Sign out
