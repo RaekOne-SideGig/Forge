@@ -52,37 +52,44 @@ export async function loadFromFb(S, svLocal) {
     console.log("loadFromFb: reading from", path);
     const snap = await fbDb.ref(path).once("value");
     const d = snap.val();
-    console.log("loadFromFb: got data:", d ? "YES" : "NULL", d ? "log:" + (Array.isArray(d.log) ? d.log.length : (d.log ? Object.keys(d.log).length : 0)) : "");
     if (d) {
-      const safeLen = (v) => Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.keys(v).length : 0);
-      const localLog = safeLen(S.log);
-      const remoteLog = safeLen(d.log);
-      if (remoteLog > localLog) {
-        const preserveRole = S.role;
-        const preserveCoach = S.linkedCoach;
-        const preserveCoachName = S.coachName;
-        Object.assign(S, d);
-        // Firebase may convert arrays to objects - fix them
-        if (S.log && !Array.isArray(S.log)) S.log = Object.values(S.log);
-        if (S.days && !Array.isArray(S.days)) S.days = Object.values(S.days);
-        if (S.ncItems && !Array.isArray(S.ncItems)) S.ncItems = Object.values(S.ncItems);
-        if (preserveCoach && !S.linkedCoach) {
-          S.linkedCoach = preserveCoach;
-          S.coachName = preserveCoachName;
-          S.role = preserveRole;
-        }
-        svLocal(); fbConnected = true; updSync(); return true;
-      } else if (localLog > 0 && localLog > remoteLog) {
-        syncToFb(S); fbConnected = true; updSync(); return false;
-      } else if (remoteLog > 0 && localLog === 0) {
-        Object.assign(S, d);
-        if (S.log && !Array.isArray(S.log)) S.log = Object.values(S.log);
-        if (S.days && !Array.isArray(S.days)) S.days = Object.values(S.days);
-        if (S.ncItems && !Array.isArray(S.ncItems)) S.ncItems = Object.values(S.ncItems);
-        svLocal(); fbConnected = true; updSync(); return true;
-      } else { fbConnected = true; updSync(); return false; }
-    } else { syncToFb(S); fbConnected = true; updSync(); return false; }
-  } catch (e) { fbConnected = false; updSync(); return false; }
+      console.log("loadFromFb: got remote data, applying");
+      const preserveRole = S.role;
+      const preserveCoach = S.linkedCoach;
+      const preserveCoachName = S.coachName;
+      // Always use remote data as source of truth
+      Object.assign(S, d);
+      // Firebase may convert arrays to objects - fix them
+      if (S.log && !Array.isArray(S.log)) S.log = Object.values(S.log);
+      if (S.days && !Array.isArray(S.days)) S.days = Object.values(S.days);
+      if (S.ncItems && !Array.isArray(S.ncItems)) S.ncItems = Object.values(S.ncItems);
+      // Fix exercises arrays within days
+      if (S.days && Array.isArray(S.days)) {
+        S.days.forEach(d => {
+          if (d && d.exercises && !Array.isArray(d.exercises)) d.exercises = Object.values(d.exercises);
+        });
+      }
+      // Preserve coach link if it was set locally but not remotely
+      if (preserveCoach && !S.linkedCoach) {
+        S.linkedCoach = preserveCoach;
+        S.coachName = preserveCoachName;
+        S.role = preserveRole;
+      }
+      svLocal();
+      fbConnected = true; updSync();
+      return true;
+    } else {
+      // No remote data - push local to Firebase
+      console.log("loadFromFb: no remote data, pushing local");
+      syncToFb(S);
+      fbConnected = true; updSync();
+      return false;
+    }
+  } catch (e) {
+    console.warn("loadFromFb failed:", e);
+    fbConnected = false; updSync();
+    return false;
+  }
 }
 
 export function updSync() {

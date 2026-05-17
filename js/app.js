@@ -282,12 +282,12 @@ function rView(){if(curMode==="c")rCoachView();else rAthView()}
 function rCoachView(){
 const el=document.getElementById("mainV");
 let ctabs='<div class="tabs"><button class="tab'+(coachTab==="arch"?" a":"")+'" onclick="coachTab=\'arch\';rCoachView()">Architect</button><button class="tab'+(coachTab==="lib"?" a":"")+'" onclick="coachTab=\'lib\';rCoachView()">Exercise Library</button><button class="tab'+(coachTab==="rec"?" a":"")+'" onclick="coachTab=\'rec\';rCoachView()">Recovery</button><button class="tab'+(coachTab==="dash"?" a":"")+'" onclick="coachTab=\'dash\';rCoachView()">Dashboard</button>';
-if(S.role==="coach"||S.role==="both")ctabs+='<button class="tab'+(coachTab==="team"?" a":"")+'" onclick="coachTab=\'team\';rCoachView()">My Athletes</button>';
+if(S.role==="coach"||S.role==="both")ctabs+='<button class="tab'+(coachTab==="team"?" a":"")+'" onclick="selectedAthlete=null;athleteData=null;coachTab=\'team\';rCoachView()">My Athletes</button>';
 ctabs+='</div>';
 let editLabel=selectedAthlete?coachAthletes.find(a=>a.uid===selectedAthlete)?.name||"Athlete":"My Program";
 let topBar=(S.role==="coach"||S.role==="both")?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:var(--ob3);border:1px solid var(--sb);border-radius:8px;font-size:13px"><span style="color:var(--w3)">Editing:</span><span style="color:var(--cyan);font-weight:600">'+editLabel+'</span>'+(selectedAthlete?'<button class="bs" style="margin-left:auto;font-size:11px;padding:3px 8px;min-height:28px" onclick="selectedAthlete=null;athleteData=null;rView()">Back to mine</button>':'')+'</div>':'';
 el.innerHTML=ctabs+topBar+'<div id="cC"></div>';
-if(coachTab==="arch")rArch();else if(coachTab==="lib")rLib();else if(coachTab==="rec")rCoachRec();else if(coachTab==="team")rTeam();else rCoachDash()}
+if(coachTab==="team"){selectedAthlete=null;athleteData=null;rTeam()}else if(coachTab==="arch")rArch();else if(coachTab==="lib")rLib();else if(coachTab==="rec")rCoachRec();else rCoachDash()}
 
 function rTeam(){
 var el=document.getElementById("cC");if(!el)return;
@@ -334,14 +334,23 @@ async function doCopyWorkout(sourceUid, targetUid, targetName){
   try{
     var sourceDays;
     if(sourceUid==="mine"){
-      sourceDays=JSON.parse(JSON.stringify(S.days));
+      // Read fresh from Firebase to avoid state issues
+      var snap=await fbDb.ref(fbUserPath(S)+"/days").once("value");
+      sourceDays=snap.val();
+      if(!sourceDays){
+        sourceDays=JSON.parse(JSON.stringify(S.days));
+      }
     }else{
       var snap=await fbDb.ref("users/"+sourceUid+"/days").once("value");
       sourceDays=snap.val();
-      if(sourceDays&&!Array.isArray(sourceDays))sourceDays=Object.values(sourceDays);
-      if(!sourceDays){alert("Source has no workout data");return}
-      sourceDays=JSON.parse(JSON.stringify(sourceDays));
     }
+    if(sourceDays&&!Array.isArray(sourceDays))sourceDays=Object.values(sourceDays);
+    if(!sourceDays||!sourceDays.length){alert("Source has no workout data");return}
+    // Deep copy and fix any Firebase array conversions
+    sourceDays=JSON.parse(JSON.stringify(sourceDays));
+    sourceDays.forEach(function(d){
+      if(d.exercises&&!Array.isArray(d.exercises))d.exercises=Object.values(d.exercises);
+    });
     await fbDb.ref("users/"+targetUid+"/days").set(sourceDays);
     clO();
     alert("Workout copied to "+targetName);
