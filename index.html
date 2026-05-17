@@ -298,7 +298,11 @@ async function loadFromFb(){
     if(d){
       const localLog=(S.log||[]).length;
       const remoteLog=(d.log||[]).length;
-      if(remoteLog>localLog){Object.assign(S,d);svLocal();fbConnected=true;updSync();return true}
+      if(remoteLog>localLog){
+        const preserveRole=S.role;const preserveCoach=S.linkedCoach;const preserveCoachName=S.coachName;
+        Object.assign(S,d);
+        if(preserveCoach&&!S.linkedCoach){S.linkedCoach=preserveCoach;S.coachName=preserveCoachName;S.role=preserveRole}
+        svLocal();fbConnected=true;updSync();return true}
       else if(localLog>remoteLog){syncToFb();fbConnected=true;updSync();return false}
       else{fbConnected=true;updSync();return false}
     }else{syncToFb();fbConnected=true;updSync();return false}
@@ -432,7 +436,6 @@ async function init(){
       svLocal();
       if(!S.weight){showWeightPrompt();return}
       if(!S.role){showRoleSelect();return}
-      if(S.role==="athlete"&&!S.linkedCoach){S.role="";svLocal();showRoleSelect();return}
       renderApp();
     }else{
       fbUser=null;
@@ -643,8 +646,8 @@ S.log.forEach(lg=>{
   if(lg.dayIdx==l.di&&lg.weights&&lg.weights[l.ei]){
     const raw=lg.weights[l.ei];let wts=[];
     if(typeof raw==="object"&&!Array.isArray(raw)){
-      Object.entries(raw).forEach(([k,s])=>{if(k==="_meta")return;if(s&&s.lbs){const n=parseFloat(s.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}else if(typeof s==="string"||typeof s==="number"){const n=parseFloat(s);if(!isNaN(n)&&n<2000)wts.push(n)}});
-    }else if(Array.isArray(raw)){raw.forEach(v=>{const n=parseFloat(v);if(!isNaN(n)&&n<2000)wts.push(n)})}
+      Object.entries(raw).forEach(([k,s])=>{if(k==="_meta")return;if(Array.isArray(s)){s.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}else{const n=parseFloat(item);if(!isNaN(n)&&n<2000)wts.push(n)}})}else if(s&&s.lbs){const n=parseFloat(s.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}else if(typeof s==="string"||typeof s==="number"){const n=parseFloat(s);if(!isNaN(n)&&n<2000)wts.push(n)}});
+    }else if(Array.isArray(raw)){raw.forEach(v=>{if(v&&typeof v==="object"&&v.lbs){const n=parseFloat(v.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}else{const n=parseFloat(v);if(!isNaN(n)&&n<2000)wts.push(n)}})}
     if(wts.length)pts.push({date:lg.date,max:Math.max(...wts)});
   }
 });
@@ -657,7 +660,7 @@ c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:
 
 function rCOCh(){
 const c=document.getElementById("coCh");if(!c)return;if(c._c)c._c.destroy();
-const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(typeof s==="object"&&!Array.isArray(s)){Object.entries(s).forEach(([sk,v])=>{if(sk==="_meta")return;const n=parseFloat(v?.lbs||v);if(!isNaN(n)&&n<2000&&n>mx)mx=n})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
+const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(Array.isArray(s)){s.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}else if(typeof s==="object"&&s!==null){Object.values(s).forEach(v=>{if(Array.isArray(v)){v.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}else if(v&&typeof v==="object"&&v.lbs){const n=parseFloat(v.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}else{const n=parseFloat(v);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
 const ds=Object.keys(bd).sort();
 if(ds.length===0){c.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--w3)">No data yet.</div>';return}
 const vals=ds.map(d=>bd[d]);const minY=Math.min(...vals);const maxY=Math.max(...vals);const pad=Math.max(10,Math.round((maxY-minY)*0.2)||10);
@@ -843,7 +846,7 @@ S.log.forEach(lg=>{
         if(s&&s.lbs){const n=parseFloat(s.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}
         else if(typeof s==="string"||typeof s==="number"){const n=parseFloat(s);if(!isNaN(n)&&n<2000)wts.push(n)}
       });
-    }else if(Array.isArray(raw)){raw.forEach(v=>{const n=parseFloat(v);if(!isNaN(n)&&n<2000)wts.push(n)})}
+    }else if(Array.isArray(raw)){raw.forEach(v=>{if(v&&typeof v==="object"&&v.lbs){const n=parseFloat(v.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}else{const n=parseFloat(v);if(!isNaN(n)&&n<2000)wts.push(n)}})}
     if(wts.length)pts.push({date:lg.date,max:Math.max(...wts)});
   }
 });
@@ -859,7 +862,7 @@ c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:
 
 function rOCh(){
 const c=document.getElementById("oCh");if(!c)return;if(c._c)c._c.destroy();
-const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(typeof s==="object"&&!Array.isArray(s)){Object.entries(s).forEach(([sk,v])=>{if(sk==="_meta")return;const n=parseFloat(v?.lbs||v);if(!isNaN(n)&&n<2000&&n>mx)mx=n})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
+const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(Array.isArray(s)){s.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}else if(typeof s==="object"&&s!==null){Object.values(s).forEach(v=>{if(Array.isArray(v)){v.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}else if(v&&typeof v==="object"&&v.lbs){const n=parseFloat(v.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}else{const n=parseFloat(v);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
 const ds=Object.keys(bd).sort();
 if(ds.length===0){c.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--w3)">No data yet.</div>';return}
 const vals=ds.map(d=>bd[d]);const minY=Math.min(...vals);const maxY=Math.max(...vals);const pad=Math.max(10,Math.round((maxY-minY)*0.2)||10);
@@ -899,11 +902,43 @@ h+='<div class="cd"><div class="ch"><h3>Nutrition compliance</h3></div>';
 h+=S.ncItems.map((item,i)=>'<div class="hi"><span>'+item+'</span><div class="tp" id="nc_'+i+'" onclick="this.classList.toggle(\'on\')"><div class="dt"></div></div></div>').join("");
 if(saved!==undefined)h+='<div style="font-size:12px;color:var(--grn);margin-top:8px">✓ Saved today ('+saved+'% compliance)</div>';
 h+='<button class="save-btn" onclick="saveRec()">Save recovery log</button></div>';
+
+h+='<div class="cd"><div class="ch"><h3>Coach link</h3></div>';
+if(S.linkedCoach){
+  h+='<div style="font-size:12px;color:var(--grn);margin-bottom:6px">✓ Linked to '+(S.coachName||"coach")+'</div>';
+  h+='<button class="bs" style="font-size:11px" onclick="unlinkSelf()">Unlink from coach</button>';
+}else{
+  h+='<div style="font-size:12px;color:var(--w3);margin-bottom:6px">Not linked to a coach</div>';
+  h+='<div style="display:flex;gap:6px;align-items:center"><input class="fi" id="relinkCode" placeholder="Enter invite code" style="flex:1;text-transform:uppercase;letter-spacing:2px"><button class="bs bsa" onclick="relinkCoach()">Link</button></div>';
+}
+h+='</div>';
 el.innerHTML=h}
 
 function saveRec(){const total=S.ncItems.length;if(total===0)return;let on=0;S.ncItems.forEach((item,i)=>{const el=document.getElementById("nc_"+i);if(el&&el.classList.contains("on"))on++});const pct=Math.round(on/total*100);S.recLog[tds()]=pct;sv();rRec();alert("Recovery saved: "+pct+"% compliance")}
 
 // ===== LIBRARY =====
+
+function unlinkSelf(){
+  if(!confirm("Unlink from your coach? You can relink anytime with their code."))return;
+  S.linkedCoach="";S.coachName="";sv();rRec();
+}
+
+async function relinkCoach(){
+  const code=(document.getElementById("relinkCode").value||"").trim().toUpperCase();
+  if(!code||code.length<4){alert("Enter a valid invite code");return}
+  try{
+    const snap=await fbDb.ref("invites/"+code).once("value");
+    const data=snap.val();
+    if(!data){alert("Code not found");return}
+    S.linkedCoach=data.uid;S.coachName=data.name||"Coach";
+    if(!S.role||S.role==="both")S.role="athlete";
+    if(fbUser){
+      await fbDb.ref("users/"+data.uid+"/athletes/"+fbUser.uid).set({name:S.user,photo:S.photoURL||"",uid:fbUser.uid});
+    }
+    sv();rRec();
+    alert("Linked to "+S.coachName);
+  }catch(e){alert("Error: "+e.message)}
+}
 function rLib(){
 const el=document.getElementById("cC");const f=S.ltf;
 const ts=["all","compound","isolation","mobility","stretch","foam roll","cardio"];
