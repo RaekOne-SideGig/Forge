@@ -21,15 +21,19 @@ const BB = "assets/body-back.jpg";
 // Athlete-aware wrappers
 function cDay(d) {
   const di = d !== undefined ? d : cD;
-  if (selectedAthlete && athleteData && athleteData.days) return athleteData.days[di] || athleteData.days[0];
+  if (selectedAthlete && athleteData) {
+    if(!athleteData.days||!Array.isArray(athleteData.days))athleteData.days=[];
+    if(!athleteData.days.length)return {label:"New Day",exercises:[]};
+    return athleteData.days[di] || athleteData.days[0];
+  }
   return _cDay(di);
 }
 function cV(d) {
   const di = d !== undefined ? d : cD;
-  if (selectedAthlete && athleteData && athleteData.days) {
+  if (selectedAthlete && athleteData) {
     const v = {};
     const day = cDay(di);
-    if (!day) return v;
+    if (!day || !day.exercises) return v;
     day.exercises.forEach(w => {
       const e = gx(w.exId);
       if (!e || e.p === "Cardio") return;
@@ -38,14 +42,26 @@ function cV(d) {
     });
     return v;
   }
+  const day2 = _cDay(di);
+  if (!day2 || !day2.exercises) return {};
   return _cV(di);
 }
 function sv() {
   if (selectedAthlete && athleteData) {
     svLocal();
-    fbDb.ref("users/"+selectedAthlete).update({days: athleteData.days || []}).then(()=>{
-      console.log("Athlete data saved");
-    }).catch(e=>console.error("Athlete save failed:",e));
+    // Ensure days is a clean array before saving
+    if(!athleteData.days||!Array.isArray(athleteData.days))athleteData.days=[];
+    var cleanDays=JSON.parse(JSON.stringify(athleteData.days));
+    fbDb.ref("users/"+selectedAthlete).update({days:cleanDays}).then(()=>{
+      console.log("Athlete data saved to Firebase");
+      // Update sync indicator
+      var dot=document.getElementById("syncDot");if(dot)dot.className="dot ok";
+      var txt=document.getElementById("syncTxt");if(txt)txt.textContent="Synced";
+    }).catch(e=>{
+      console.error("Athlete save failed:",e);
+      var dot=document.getElementById("syncDot");if(dot)dot.className="dot off";
+      var txt=document.getElementById("syncTxt");if(txt)txt.textContent="Error";
+    });
   } else {
     _sv();
   }
@@ -286,7 +302,7 @@ for(var ai=0;ai<coachAthletes.length;ai++){var a=coachAthletes[ai];
 h+='<div class="athlete-item'+(selectedAthlete===a.uid?' active':'')+'" style="flex-wrap:wrap">';
 h+='<span class="aname" style="flex:1;cursor:pointer" onclick="selectAthlete(\x27'+a.uid+'\x27)">'+(a.name||'Athlete')+'</span>';
 h+='<button class="bs" style="font-size:11px;padding:4px 8px;min-height:28px" onclick="selectAthlete(\x27'+a.uid+'\x27)">View</button>';
-h+='<button class="bs" style="font-size:11px;padding:4px 8px;min-height:28px;color:var(--cyan);border-color:var(--cyan)" onclick="copyWorkoutTo(\x27'+a.uid+'\x27,\x27'+(a.name||'Athlete')+'\x27)">Copy my workout</button>';
+h+='<button class="bs" style="font-size:11px;padding:4px 8px;min-height:28px;color:var(--cyan);border-color:var(--cyan)" onclick="showCopyWorkout(\x27'+a.uid+'\x27,\x27'+((a.name||'Athlete').replace(/'/g,''))+'\x27)">Copy to</button>';
 h+='<button class="dbtn" style="font-size:11px" onclick="removeAthlete(\x27'+a.uid+'\x27)">Remove</button>';
 h+='</div>';}
 h+='</div></div>';
@@ -297,12 +313,38 @@ h+='<div style="font-size:12px;margin-top:4px">Share your invite code to get sta
 h+='</div></div>';}
 el.innerHTML=h}
 
-async function copyWorkoutTo(uid, name){
-  if(!confirm("Copy your current workout program to "+name+"?\nThis will replace their existing workout."))return;
+
+function showCopyWorkout(targetUid, targetName){
+  var ov=document.getElementById("ovl");
+  var sources='<div class="sr">';
+  sources+='<div class="sri" onclick="doCopyWorkout(\x27mine\x27,\x27'+targetUid+'\x27,\x27'+targetName+'\x27)"><span style="font-weight:500;flex:1">My Program</span><span class="bg bb" style="font-size:10px">Coach</span></div>';
+  for(var i=0;i<coachAthletes.length;i++){
+    var a=coachAthletes[i];
+    if(a.uid!==targetUid){
+      sources+='<div class="sri" onclick="doCopyWorkout(\x27'+a.uid+'\x27,\x27'+targetUid+'\x27,\x27'+targetName+'\x27)"><span style="font-weight:500;flex:1">'+(a.name||'Athlete')+'</span><span class="bg ba" style="font-size:10px">Athlete</span></div>';
+    }
+  }
+  sources+='</div>';
+  ov.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Copy workout to '+targetName+'</h3><button class="bs" onclick="clO()">Close</button></div><div style="font-size:12px;color:var(--w3);margin-bottom:8px">Select whose workout to copy:</div>'+sources+'</div></div>';
+  ov.style.display="block";
+}
+
+async function doCopyWorkout(sourceUid, targetUid, targetName){
+  if(!confirm("Copy workout to "+targetName+"? This will replace their current program."))return;
   try{
-    const daysCopy = JSON.parse(JSON.stringify(S.days));
-    await fbDb.ref("users/"+uid+"/days").set(daysCopy);
-    alert("Workout copied to "+name);
+    var sourceDays;
+    if(sourceUid==="mine"){
+      sourceDays=JSON.parse(JSON.stringify(S.days));
+    }else{
+      var snap=await fbDb.ref("users/"+sourceUid+"/days").once("value");
+      sourceDays=snap.val();
+      if(sourceDays&&!Array.isArray(sourceDays))sourceDays=Object.values(sourceDays);
+      if(!sourceDays){alert("Source has no workout data");return}
+      sourceDays=JSON.parse(JSON.stringify(sourceDays));
+    }
+    await fbDb.ref("users/"+targetUid+"/days").set(sourceDays);
+    clO();
+    alert("Workout copied to "+targetName);
   }catch(e){alert("Error: "+e.message)}
 }
 
@@ -328,8 +370,10 @@ function copyInvite(){
 }
 function rArch(){
 const el=document.getElementById("cC");
-const days=selectedAthlete&&athleteData&&athleteData.days?athleteData.days:S.days;
-if(!days||!days.length){el.innerHTML='<div class="cd" style="text-align:center;padding:20px;color:var(--w3)">No workout days. Click + Day to create one.</div><button class="dtab-add" onclick="addDay()" style="width:100%;margin-top:8px">+ Day</button>';return}
+var days=selectedAthlete&&athleteData&&athleteData.days?athleteData.days:S.days;
+if(!days||!Array.isArray(days)||!days.length){
+  if(selectedAthlete&&athleteData){athleteData.days=[];days=athleteData.days}
+  el.innerHTML='<div class="cd" style="text-align:center;padding:20px;color:var(--w3)">No workout days set up yet.</div><div style="display:flex;gap:8px;margin-top:8px"><button class="bs bsa" onclick="addDay()" style="flex:1;padding:10px">+ Create first day</button>'+(selectedAthlete?'<button class="bs" style="flex:1;padding:10px;color:var(--cyan);border-color:var(--cyan)" onclick="showCopyWorkout(\x27'+selectedAthlete+'\x27,\x27'+(athleteData?.user||'Athlete')+'\x27)">Copy from...</button>':'')+'</div>';return}
 if(cD>=days.length)cD=0;
 const d=cDay(cD);const wu=getWU();const v=cV(cD);
 let h='<div class="dtabs">'+cDT(true)+'</div><div class="cd"><div class="wdh"><input value="'+d.label+'" onchange="cDay(cD).label=this.value;sv();rView()" placeholder="Day name">';
@@ -956,7 +1000,8 @@ window.cancelWorkout = cancelWorkout;
 window.clO = clO;
 window.completeSet = completeSet;
 window.copyInvite = copyInvite;
-window.copyWorkoutTo = copyWorkoutTo;
+window.showCopyWorkout = showCopyWorkout;
+window.doCopyWorkout = doCopyWorkout;
 window.delDay = delDay;
 window.deleteProfile = deleteProfile;
 window.doGoogleLogin = doGoogleLogin;
