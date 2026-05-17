@@ -113,7 +113,7 @@ function showRoleSelect(){
 function pickRole(r){
   S.role=r;
   if(r==="coach"||r==="both"){
-    if(!S.inviteCode)S.inviteCode=genInviteCode();
+    if(!S.inviteCode)S.inviteCode=genInviteCode(S);
   }
   sv();
   if(r==="athlete"){showLinkCoach();return}
@@ -121,7 +121,7 @@ function pickRole(r){
 }
 
 function showLinkCoach(){
-  document.getElementById("app").innerHTML='<div class="lw"><h2>Link to your coach</h2><div style="font-size:13px;color:var(--w3);margin-bottom:8px;text-align:center">Enter the invite code your coach gave you, or skip to train solo</div><input class="li" id="invCode" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')linkCoach()"><button class="lb" onclick="linkCoach()">Link to coach</button><button style="background:none;border:none;color:var(--w3);cursor:pointer;font-size:13px;margin-top:12px;font-family:inherit" onclick="S.role=\'both\';if(!S.inviteCode)S.inviteCode=genInviteCode();sv();setTimeout(()=>renderApp(),100)">Skip — I\'ll coach myself</button></div>';
+  document.getElementById("app").innerHTML='<div class="lw"><h2>Link to your coach</h2><div style="font-size:13px;color:var(--w3);margin-bottom:8px;text-align:center">Enter the invite code your coach gave you, or skip to train solo</div><input class="li" id="invCode" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')linkCoach()"><button class="lb" onclick="linkCoach()">Link to coach</button><button style="background:none;border:none;color:var(--w3);cursor:pointer;font-size:13px;margin-top:12px;font-family:inherit" onclick="S.role=\'both\';if(!S.inviteCode)S.inviteCode=genInviteCode(S);sv();setTimeout(()=>renderApp(),100)">Skip — I\'ll coach myself</button></div>';
 }
 
 async function linkCoach(){
@@ -823,7 +823,6 @@ window.editEx = editEx;
 window.editSearch = editSearch;
 window.endWorkout = endWorkout;
 window.exportData = exportData;
-window.genInviteCode = genInviteCode;
 window.getActiveData = getActiveData;
 window.getPrevWts = getPrevWts;
 window.getWU = getWU;
