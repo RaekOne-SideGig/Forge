@@ -166,6 +166,23 @@ function cDT(add){return S.days.map((d,i)=>'<button class="dtab'+(i===cD?' a':''
 function addDay(){if(S.days.length>=7)return;S.days.push({label:"Day "+(S.days.length+1),exercises:[]});cD=S.days.length-1;sv();rView()}
 function delDay(){if(S.days.length<=1)return;S.days.splice(cD,1);if(cD>=S.days.length)cD=S.days.length-1;sv();rView()}
 
+
+function getActiveDays(){
+  if(selectedAthlete && athleteData && athleteData.days) return athleteData.days;
+  return S.days;
+}
+function getActiveCDay(){
+  return getActiveDays()[cD] || getActiveDays()[0];
+}
+function saveActiveData(){
+  if(selectedAthlete && athleteData){
+    // Save athlete data to Firebase
+    athleteData.days = getActiveDays();
+    fbDb.ref("users/"+selectedAthlete).update({days:athleteData.days});
+  } else {
+    sv();
+  }
+}
 function renderApp(){
 document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw" id="modeButtons"></div></div><div class="ctx" id="ctxBar">'+(S.photoURL?'<img class="user-avatar" src="'+S.photoURL+'">':'')+'<span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><span class="sync-bar" style="border:none;padding:0;margin:0;background:none"><span class="dot off" id="syncDot"></span><span id="syncTxt" style="font-size:10px">Syncing</span></span><button class="lo" onclick="logout()">Logout</button><button class="del-btn" onclick="deleteProfile()">Delete</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';
 // Set mode buttons based on role
@@ -212,6 +229,7 @@ for(var ai=0;ai<coachAthletes.length;ai++){var a=coachAthletes[ai];
 h+='<div class="athlete-item'+(selectedAthlete===a.uid?' active':'')+'" style="flex-wrap:wrap">';
 h+='<span class="aname" style="flex:1;cursor:pointer" onclick="selectAthlete(\x27'+a.uid+'\x27)">'+(a.name||'Athlete')+'</span>';
 h+='<button class="bs" style="font-size:11px;padding:4px 8px;min-height:28px" onclick="selectAthlete(\x27'+a.uid+'\x27)">View</button>';
+h+='<button class="bs" style="font-size:11px;padding:4px 8px;min-height:28px;color:var(--cyan);border-color:var(--cyan)" onclick="copyWorkoutTo(\x27'+a.uid+'\x27,\x27'+(a.name||'Athlete')+'\x27)">Copy my workout</button>';
 h+='<button class="dbtn" style="font-size:11px" onclick="removeAthlete(\x27'+a.uid+'\x27)">Remove</button>';
 h+='</div>';}
 h+='</div></div>';
@@ -221,6 +239,16 @@ h+='<div style="font-size:13px">No athletes linked yet</div>';
 h+='<div style="font-size:12px;margin-top:4px">Share your invite code to get started</div>';
 h+='</div></div>';}
 el.innerHTML=h}
+
+async function copyWorkoutTo(uid, name){
+  if(!confirm("Copy your current workout program to "+name+"?\nThis will replace their existing workout."))return;
+  try{
+    const daysCopy = JSON.parse(JSON.stringify(S.days));
+    await fbDb.ref("users/"+uid+"/days").set(daysCopy);
+    alert("Workout copied to "+name);
+  }catch(e){alert("Error: "+e.message)}
+}
+
 
 async function removeAthlete(uid){
   var a=coachAthletes.find(function(x){return x.uid===uid});
@@ -628,8 +656,60 @@ function pkT(b,v){document.querySelectorAll("#mTG .gpi").forEach(x=>x.classList.
 function pkP(b,v){document.querySelectorAll("#mPG .bpp").forEach(x=>x.classList.remove("a"));b.classList.add("a");document.getElementById("mP").value=v}
 function clO(){document.getElementById("ovl").style.display="none";document.getElementById("ovl").innerHTML=""}
 function rAS(ts,ctx){const q=(document.getElementById("aSr").value||"").toLowerCase();if(q.length<2){document.getElementById("aSrR").innerHTML="";return}const al=ts.split(",");const r=aDB().filter(e=>{if(!al.includes(e.t))return false;return(e.n+" "+e.p+" "+(e.s||[]).join(" ")).toLowerCase().includes(q)}).slice(0,8);document.getElementById("aSrR").innerHTML=r.length?'<div class="sr">'+r.map(e=>'<div class="sri" onclick="pkSR('+e.id+",'"+ctx+"')\"><span style=\"font-weight:500;flex:1\">"+e.n+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.t+'</span><span style="font-size:11px;color:var(--w3)">'+e.p+'</span></div>').join('')+'</div>':'<div style="font-size:12px;color:var(--w3);padding:6px">No matches</div>'}
-function pkSR(id,ctx){const e=gx(id);cDay(cD).exercises.push(e.t==="cardio"?{exId:id,sets:1,reps:"30 min"}:{exId:id,sets:e?.t==="compound"?4:3,reps:e?.t==="compound"?"6-8":"10-12",rest:e?.r||60});sv();clO();rView()}
-function svA(ctx){const nm=(document.getElementById("mN").value||"").trim();if(!nm)return;const ne={id:S.nxId++,n:nm,t:document.getElementById("mT").value,p:document.getElementById("mP").value,s:[...document.querySelectorAll("#mS2 .bpp.a")].map(b=>b.textContent),r:0};if(ne.t==="compound")ne.r=120;else if(ne.t==="isolation")ne.r=60;S.customEx.push(ne);if(ctx!=="library"){const rst=parseInt(document.getElementById("mRst")?.value)||0;const ssv=(document.getElementById("mSS")?.value||"").trim();const item=ne.t==="cardio"?{exId:ne.id,sets:1,reps:"30 min"}:{exId:ne.id,sets:parseInt(document.getElementById("mSt")?.value)||3,reps:document.getElementById("mRp")?.value||"10",rest:rst};if(ssv)item.ss=ssv;cDay(cD).exercises.push(item)}sv();clO();rView()}
+function pkSR(id,ctx){
+  const e=gx(id);if(!e)return;
+  // Populate form fields instead of auto-adding
+  document.getElementById("aSr").value="";
+  document.getElementById("aSrR").innerHTML="";
+  document.getElementById("mN").value=e.n;
+  // Set type pill
+  document.querySelectorAll("#mTG .gpi").forEach(b=>b.classList.remove("a"));
+  document.querySelectorAll("#mTG .gpi").forEach(b=>{if(b.textContent.toLowerCase()===e.t)b.classList.add("a")});
+  document.getElementById("mT").value=e.t;
+  // Set primary muscle pill
+  document.querySelectorAll("#mPG .bpp").forEach(b=>b.classList.remove("a"));
+  document.querySelectorAll("#mPG .bpp").forEach(b=>{if(b.textContent===e.p)b.classList.add("a")});
+  document.getElementById("mP").value=e.p;
+  // Set defaults for sets/reps
+  var setsEl=document.getElementById("mSt");
+  var repsEl=document.getElementById("mRp");
+  if(setsEl)setsEl.value=e.t==="compound"?4:e.t==="cardio"?1:3;
+  if(repsEl)repsEl.value=e.t==="compound"?"6-8":e.t==="cardio"?"30 min":"10-12";
+  // Store the picked exercise ID for svA to use
+  window._pickedExId=id;
+}
+function svA(ctx){
+  // Check if user picked an existing exercise from search
+  if(window._pickedExId){
+    const id=window._pickedExId;
+    window._pickedExId=null;
+    const e=gx(id);
+    const sets=parseInt(document.getElementById("mSt")?.value)||3;
+    const reps=document.getElementById("mRp")?.value||"10";
+    const rst=parseInt(document.getElementById("mRst")?.value)||0;
+    const ssv=(document.getElementById("mSS")?.value||"").trim();
+    const item=e.t==="cardio"?{exId:id,sets:1,reps:reps}:{exId:id,sets:sets,reps:reps,rest:rst};
+    if(ssv)item.ss=ssv;
+    cDay(cD).exercises.push(item);
+    sv();clO();rView();
+    return;
+  }
+  // Otherwise create new exercise
+  const nm=(document.getElementById("mN").value||"").trim();if(!nm)return;
+  const ne={id:S.nxId++,n:nm,t:document.getElementById("mT").value,p:document.getElementById("mP").value,s:[...document.querySelectorAll("#mS2 .bpp.a")].map(b=>b.textContent),r:0};
+  if(ne.t==="compound")ne.r=120;else if(ne.t==="isolation")ne.r=60;
+  S.customEx.push(ne);
+  if(ctx!=="library"){
+    const sets=parseInt(document.getElementById("mSt")?.value)||3;
+    const reps=document.getElementById("mRp")?.value||"10";
+    const rst=parseInt(document.getElementById("mRst")?.value)||0;
+    const ssv=(document.getElementById("mSS")?.value||"").trim();
+    const item=ne.t==="cardio"?{exId:ne.id,sets:1,reps:reps}:{exId:ne.id,sets:sets,reps:reps,rest:rst};
+    if(ssv)item.ss=ssv;
+    cDay(cD).exercises.push(item);
+  }
+  sv();clO();rView();
+}
 
 // ===== TIMER =====
 
@@ -815,6 +895,7 @@ window.cancelWorkout = cancelWorkout;
 window.clO = clO;
 window.completeSet = completeSet;
 window.copyInvite = copyInvite;
+window.copyWorkoutTo = copyWorkoutTo;
 window.delDay = delDay;
 window.deleteProfile = deleteProfile;
 window.doGoogleLogin = doGoogleLogin;
@@ -860,6 +941,9 @@ window.rTeam = rTeam;
 window.rView = rView;
 window.relinkCoach = relinkCoach;
 window.removeAthlete = removeAthlete;
+window.saveActiveData = saveActiveData;
+window.getActiveCDay = getActiveCDay;
+window.getActiveDays = getActiveDays;
 window.renderApp = renderApp;
 window.resumeWorkout = resumeWorkout;
 window.saveEdit = saveEdit;
@@ -894,9 +978,24 @@ Object.defineProperty(window, 'calY', { get: () => calY, set: (v) => { calY = v;
 Object.defineProperty(window, 'calM', { get: () => calM, set: (v) => { calM = v; } });
 Object.defineProperty(window, 'selectedAthlete', { get: () => selectedAthlete, set: (v) => { selectedAthlete = v; } });
 Object.defineProperty(window, 'athleteData', { get: () => athleteData, set: (v) => { athleteData = v; } });
-window.cDay = (d) => cDay(d !== undefined ? d : cD);
+window.cDay = function(d) {
+  const di = d !== undefined ? d : cD;
+  if (selectedAthlete && athleteData && athleteData.days) return athleteData.days[di] || athleteData.days[0];
+  return cDay(di);
+};
 window.cV = (d) => cV(d !== undefined ? d : cD);
-window.sv = sv;
+window.sv = function() {
+  if (selectedAthlete && athleteData) {
+    // Save locally first
+    svLocal();
+    // Push athlete days to Firebase
+    fbDb.ref("users/"+selectedAthlete).update({days: athleteData.days || []}).then(()=>{
+      console.log("Athlete data saved to Firebase");
+    }).catch(e=>console.error("Failed to save athlete data:",e));
+  } else {
+    sv();
+  }
+};
 window.gx = gx;
 window.aDB = aDB;
 window.isL = isL;
