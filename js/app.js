@@ -74,6 +74,15 @@ async function selectAthlete(uid){
     const snap=await fbDb.ref("users/"+uid).once("value");
     athleteData=snap.val();
     selectedAthlete=uid;
+    cD=0;
+    // Fix arrays from Firebase
+    if(athleteData){
+      if(athleteData.days&&!Array.isArray(athleteData.days))athleteData.days=Object.values(athleteData.days);
+      if(athleteData.log&&!Array.isArray(athleteData.log))athleteData.log=Object.values(athleteData.log);
+      if(athleteData.ncItems&&!Array.isArray(athleteData.ncItems))athleteData.ncItems=Object.values(athleteData.ncItems);
+      // Fix exercises arrays within days
+      if(athleteData.days){athleteData.days.forEach(d=>{if(d.exercises&&!Array.isArray(d.exercises))d.exercises=Object.values(d.exercises)})}
+    }
     rView();
   }catch(e){alert("Could not load athlete data: "+e.message)}
 }
@@ -195,7 +204,11 @@ function doW(){const w=(document.getElementById("wIn").value||"").trim();if(!w)r
 
 function logout(){setS(null);setFbUser(null);try{localStorage.removeItem("forge_last")}catch(e){}fbAuth.signOut();showLogin()}
 
-function cDT(add){return S.days.map((d,i)=>'<button class="dtab'+(i===cD?' a':'')+'" onclick="cD='+i+';rView()">'+d.label+'</button>').join("")+(add?'<button class="dtab-add" onclick="addDay()">+ Day</button>':"")}
+function cDT(add){
+  const days=selectedAthlete&&athleteData&&athleteData.days?athleteData.days:S.days;
+  if(!days||!days.length)return '<div style="color:var(--w3);font-size:12px;padding:8px">No workout days set up</div>';
+  return days.map((d,i)=>'<button class="dtab'+(i===cD?' a':'')+'" onclick="cD='+i+';rView()">'+d.label+'</button>').join("")+(add?'<button class="dtab-add" onclick="addDay()">+ Day</button>':"");
+}
 function addDay(){
   const days=selectedAthlete&&athleteData?athleteData.days:S.days;
   if(days.length>=7)return;
@@ -314,9 +327,13 @@ function copyInvite(){
   else{alert("Your invite code: "+S.inviteCode)}
 }
 function rArch(){
-const el=document.getElementById("cC");const d=cDay(cD);const wu=getWU();const v=cV(cD);
+const el=document.getElementById("cC");
+const days=selectedAthlete&&athleteData&&athleteData.days?athleteData.days:S.days;
+if(!days||!days.length){el.innerHTML='<div class="cd" style="text-align:center;padding:20px;color:var(--w3)">No workout days. Click + Day to create one.</div><button class="dtab-add" onclick="addDay()" style="width:100%;margin-top:8px">+ Day</button>';return}
+if(cD>=days.length)cD=0;
+const d=cDay(cD);const wu=getWU();const v=cV(cD);
 let h='<div class="dtabs">'+cDT(true)+'</div><div class="cd"><div class="wdh"><input value="'+d.label+'" onchange="cDay(cD).label=this.value;sv();rView()" placeholder="Day name">';
-if(cDay(cD)&&(selectedAthlete?athleteData.days:S.days).length>1)h+='<button class="bs" style="color:var(--red);border-color:var(--red)" onclick="delDay()">Delete</button>';
+if(days.length>1)h+='<button class="bs" style="color:var(--red);border-color:var(--red)" onclick="delDay()">Delete</button>';
 h+='</div><div style="font-size:12px;color:var(--w2);margin:8px 0 4px">Warm-up (auto-matched)</div>';
 h+=wu.map(w=>{const ex=aDB().find(e=>e.n===w.name);return '<div class="er"><span class="en">'+w.name+'</span><span class="bg '+(ex?tB(ex.t):"ba")+'" style="font-size:10px">'+(ex?ex.t:"mobility")+'</span><span class="wr">'+w.reason+'</span></div>'}).join("");
 h+='<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px"><span style="font-size:12px;color:var(--w2)">Working sets &amp; cardio</span><button class="bs" onclick="showAdd(\'working\')">+ Add</button></div>';
@@ -332,7 +349,7 @@ h+='<div class="cd"><div class="ch"><h3>Volume</h3><span class="bg bb">'+Object.
 h+='<div class="cd"><div class="ch"><h3>Heat map</h3><div style="display:flex;gap:6px;font-size:11px;color:var(--w3)"><span style="display:flex;align-items:center;gap:2px"><span style="width:8px;height:8px;border-radius:2px;background:#1D9E75"></span>Low</span><span style="display:flex;align-items:center;gap:2px"><span style="width:8px;height:8px;border-radius:2px;background:#7F77DD"></span>Mid</span><span style="display:flex;align-items:center;gap:2px"><span style="width:8px;height:8px;border-radius:2px;background:#ED4FBA"></span>High</span></div></div><div class="bmap"><div class="hlg"><span>High</span><div class="hlg-bar"></div><span>Low</span></div><div><div class="bwrap"><img src="'+BF+'"><canvas id="cvF"></canvas></div><div class="blbl">Front</div></div><div><div class="bwrap"><img src="'+BB+'"><canvas id="cvB"></canvas></div><div class="blbl">Back</div></div></div></div>';
 el.innerHTML=h;renderHeatMap(v)}
 
-function getWU(){const pr=new Set();cDay(cD).exercises.forEach(w=>{const e=gx(w.exId);if(e&&e.p!=="Cardio"){pr.add(e.p);(e.s||[]).forEach(s=>{if(s!=="Cardio")pr.add(s)})}});const wu=[],sn=new Set();pr.forEach(p=>{(WM[p]||[]).forEach(w=>{if(!sn.has(w)){sn.add(w);wu.push({name:w,reason:p})}})});return wu.slice(0,6)}
+function getWU(){const day=cDay(cD);if(!day||!day.exercises)return[];const pr=new Set();day.exercises.forEach(w=>{const e=gx(w.exId);if(e&&e.p!=="Cardio"){pr.add(e.p);(e.s||[]).forEach(s=>{if(s!=="Cardio")pr.add(s)})}});const wu=[],sn=new Set();pr.forEach(p=>{(WM[p]||[]).forEach(w=>{if(!sn.has(w)){sn.add(w);wu.push({name:w,reason:p})}})});return wu.slice(0,6)}
 
 function rCoachRec(){
 const el=document.getElementById("cC");
