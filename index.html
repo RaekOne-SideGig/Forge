@@ -793,7 +793,38 @@ let h='<div class="cd"><div class="ch"><h3>Exercise progression</h3></div><selec
 lifts.forEach((l,i)=>h+='<option value="'+i+'">'+l.label+" — "+l.name+'</option>');
 h+='</select><div style="position:relative;width:100%;height:220px;margin-top:10px"><canvas id="dCh"></canvas></div></div>';
 h+='<div class="cd"><div class="ch"><h3>Overall strength trend</h3></div><div style="position:relative;width:100%;height:200px"><canvas id="oCh"></canvas></div></div>';
+
+// Debug panel - shows raw data for troubleshooting
+h+='<div class="cd" style="border-color:var(--amb)"><div class="ch"><h3 style="color:var(--amb)">Debug data</h3></div>';
+h+='<div style="font-size:11px;color:var(--w3);margin-bottom:4px">Workout logs: '+S.log.length+'</div>';
+if(S.log.length>0){
+  S.log.forEach(function(lg,li){
+    h+='<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--sl)">';
+    h+='<span style="color:var(--cyan)">Log '+li+':</span> date='+lg.date+' dayIdx='+lg.dayIdx+' (type:'+typeof lg.dayIdx+') label='+lg.label;
+    h+='<br>weights keys: '+(lg.weights?Object.keys(lg.weights).join(","):"NONE");
+    if(lg.weights){
+      Object.entries(lg.weights).forEach(function(entry){
+        var k=entry[0],v=entry[1];
+        if(k==="_meta")return;
+        h+='<br>&nbsp;&nbsp;ex['+k+']: '+JSON.stringify(v).substring(0,120);
+      });
+    }
+    h+='</div>';
+  });
+}else{h+='<div style="font-size:12px;color:var(--red)">No logs found in S.log</div>';}
+h+='<div style="font-size:11px;color:var(--w3);margin-top:8px">Days config:</div>';
+S.days.forEach(function(d,di){
+  h+='<div style="font-size:11px;color:var(--w2)">Day '+di+': '+d.label+' ('+d.exercises.length+' exercises)</div>';
+  d.exercises.forEach(function(w,ei){
+    var e=gx(w.exId);
+    h+='<div style="font-size:10px;color:var(--w3)">&nbsp;&nbsp;ex['+ei+']: '+(e?e.n:"???")+(e&&isL(e.t)?' [LIFT]':' [skip]')+'</div>';
+  });
+});
+h+='<div style="font-size:11px;color:var(--w3);margin-top:8px">wlogs keys: '+Object.keys(S.wlogs).join(", ")+'</div>';
+h+='</div>';
+
 el.innerHTML=h;setTimeout(()=>{rDCh();rOCh()},100)}
+
 
 function rDCh(){
 const sel=document.getElementById("dSel");if(!sel)return;
