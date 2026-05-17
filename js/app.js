@@ -91,7 +91,7 @@ async function init(){
       S.email=user.email||"";
       S.photoURL=user.photoURL||"";
       svLocal();
-      const updated=await loadFromFb();
+      const updated=await loadFromFb(S, svLocal);
       if(updated)ld(displayName);
       S.user=displayName;S.email=user.email||"";S.photoURL=user.photoURL||"";
       svLocal();
