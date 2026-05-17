@@ -23,35 +23,6 @@ let cD=0,calY=2026,calM=4,athTab="exec",curMode="c",coachTab="arch";
 
 // ===== AUTO-LOGIN: skip login if user exists =====
 
-function exportData(){
-  const data=getActiveData();
-  const from=document.getElementById("expFrom")?.value||"";
-  const to=document.getElementById("expTo")?.value||"";
-  let logs=data.log||[];
-  if(from)logs=logs.filter(l=>l.date>=from);
-  if(to)logs=logs.filter(l=>l.date<=to);
-  
-  let csv="Date,Workout,Exercise,Set,Weight (lbs),Reps,Duration (min)\n";
-  logs.forEach(lg=>{
-    const dayData=data.days[lg.dayIdx];if(!dayData)return;
-    const dur=lg.duration?Math.floor(lg.duration/60):"";
-    dayData.exercises.forEach((w,ei)=>{
-      const e=gx(w.exId);if(!e||!isL(e.t))return;
-      const wts=lg.weights?.[ei]||{};
-      Object.entries(wts).forEach(([si,sd])=>{
-        if(si==="_meta")return;
-        csv+=lg.date+","+lg.label+","+e.n+","+(parseInt(si)+1)+","+(sd.lbs||sd||"")+","+(sd.reps||"")+","+dur+"\n";
-      });
-    });
-  });
-  
-  const blob=new Blob([csv],{type:"text/csv"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;a.download="forge-export-"+(from||"all")+"-to-"+(to||"now")+".csv";
-  a.click();URL.revokeObjectURL(url);
-}
-
 let coachAthletes=[],selectedAthlete=null,athleteData=null;
 
 async function loadCoachAthletes(){
@@ -147,14 +118,6 @@ function pickRole(r){
   sv();
   if(r==="athlete"){showLinkCoach();return}
   renderApp();
-}
-
-function genInviteCode(){
-  const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code="";for(let i=0;i<6;i++)code+=chars[Math.floor(Math.random()*chars.length)];
-  // Save invite code to Firebase under a public lookup
-  if(fbUser)fbDb.ref("invites/"+code).set({uid:fbUser.uid,name:S.user,photo:S.photoURL||""});
-  return code;
 }
 
 function showLinkCoach(){
@@ -675,16 +638,6 @@ function tds2(e,i){e.preventDefault();_di=i;const r=e.target.closest(".er");if(r
 function tdm2(e){if(_di===null)return;e.preventDefault();const y=e.touches[0].clientY;document.querySelectorAll(".er[data-di]").forEach(r=>{r.classList.remove("dtgt");const rc=r.getBoundingClientRect();if(y>rc.top&&y<rc.bottom){const idx=parseInt(r.dataset.di);if(idx!==_di){r.classList.add("dtgt");_doi=idx}}})}
 function tde2(e){document.querySelectorAll(".er").forEach(r=>{r.classList.remove("dact","dtgt")});if(_di!==null&&_doi!==null&&_doi!==_di){const exs=cDay(cD).exercises;const item=exs.splice(_di,1)[0];exs.splice(_doi,0,item);sv();rView()}_di=null;_doi=null}
 function mds2(e,i){_di=i;const r=e.target.closest(".er");if(r)r.classList.add("dact");const mm=e2=>{if(_di===null)return;document.querySelectorAll(".er[data-di]").forEach(r=>{r.classList.remove("dtgt");const rc=r.getBoundingClientRect();if(e2.clientY>rc.top&&e2.clientY<rc.bottom){const idx=parseInt(r.dataset.di);if(idx!==_di){r.classList.add("dtgt");_doi=idx}}})};const mu=()=>{document.removeEventListener("mousemove",mm);document.removeEventListener("mouseup",mu);document.querySelectorAll(".er").forEach(r=>{r.classList.remove("dact","dtgt")});if(_di!==null&&_doi!==null&&_doi!==_di){const exs=cDay(cD).exercises;const item=exs.splice(_di,1)[0];exs.splice(_doi,0,item);sv();rView()}_di=null;_doi=null};document.addEventListener("mousemove",mm);document.addEventListener("mouseup",mu)}
-
-function moveEx(i,dir){
-  const exs=cDay(cD).exercises;
-  const newIdx=i+dir;
-  if(newIdx<0||newIdx>=exs.length)return;
-  const temp=exs[i];
-  exs[i]=exs[newIdx];
-  exs[newIdx]=temp;
-  sv();rView();
-}
 function editEx(i){
 const w=cDay(cD).exercises[i];const e=gx(w.exId);if(!e)return;
 const el=document.getElementById("ovl");
@@ -751,23 +704,7 @@ function onSetChange(el,ei,si,field,prev){
 }
 
 // Feature 2: Rest timer popup
-function showRestPopup(seconds,exerciseName){
-  if(seconds<=0)return;
-  const ov=document.getElementById("ovl");
-  const circ=2*Math.PI*90;
-  ov.innerHTML='<div class="timer-overlay" id="restPopup"><div class="timer-label">Rest — '+exerciseName+'</div><div class="timer-ring"><svg viewBox="0 0 200 200"><circle class="bg-ring" cx="100" cy="100" r="90"/><circle class="fg-ring" id="timerArc" cx="100" cy="100" r="90" stroke-dasharray="'+circ+'" stroke-dashoffset="0"/></svg><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"><span class="big-time" id="popTime">'+fmtRest(seconds)+'</span></div></div><button class="skip-btn" onclick="skipRest()">Skip rest</button></div>';
-  ov.style.display="block";
-  restPopupSec=seconds;restPopupTotal=seconds;
-  restPopupInt=setInterval(()=>{
-    restPopupSec--;
-    if(restPopupSec<=0){skipRest();return}
-    const el=document.getElementById("popTime");if(el)el.textContent=fmtRest(restPopupSec);
-    const arc=document.getElementById("timerArc");
-    if(arc){const off=circ*(1-restPopupSec/restPopupTotal);arc.style.strokeDashoffset=off}
-  },1000);
-}
 let restPopupInt=null,restPopupSec=0,restPopupTotal=0;
-function skipRest(){clearInterval(restPopupInt);restPopupInt=null;const ov=document.getElementById("ovl");ov.style.display="none";ov.innerHTML=""}
 
 function completeSet(ei,si,restSec,btn){
   const wk=wlk(cD);
