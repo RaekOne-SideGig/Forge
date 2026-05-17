@@ -633,7 +633,7 @@ let h='<div class="mg"><div class="mc"><div class="l">Workout days</div><div cla
 h+='<div class="cd"><div class="ch"><h3>Exercise progression</h3></div><select class="fsel" id="cdSel" onchange="rCDCh()">';
 lifts.forEach((l,i)=>h+='<option value="'+i+'">'+l.label+" — "+l.name+'</option>');
 h+='</select><div style="position:relative;width:100%;height:220px;margin-top:10px"><canvas id="cdCh"></canvas></div></div>';
-h+='<div class="cd"><div class="ch"><h3>Overall strength trend</h3></div><div style="position:relative;width:100%;height:200px"><canvas id="coCh"></canvas></div></div>';
+h+='<div class="cd"><div class="ch"><h3>Volume load trend</h3></div><div style="position:relative;width:100%;height:200px"><canvas id="coCh"></canvas></div></div>';
 h+='<div class="cd"><div class="ch"><h3>Export data</h3></div><div style="display:flex;gap:8px;margin-bottom:8px"><div class="cf" style="flex:1"><label>From</label><input class="fi" type="date" id="expFrom"></div><div class="cf" style="flex:1"><label>To</label><input class="fi" type="date" id="expTo"></div></div><button class="bs bsa" onclick="exportData()" style="width:100%;padding:10px;min-height:44px">Download CSV</button></div>';
 el.innerHTML=h;setTimeout(()=>{rCDCh();rCOCh()},100)}
 
@@ -660,12 +660,37 @@ c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:
 
 function rCOCh(){
 const c=document.getElementById("coCh");if(!c)return;if(c._c)c._c.destroy();
-const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(Array.isArray(s)){s.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}else if(typeof s==="object"&&s!==null){Object.values(s).forEach(v=>{if(Array.isArray(v)){v.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}else if(v&&typeof v==="object"&&v.lbs){const n=parseFloat(v.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}else{const n=parseFloat(v);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
+const bd={};
+S.log.forEach(lg=>{
+  if(!lg.weights)return;
+  let totalVol=0;
+  Object.entries(lg.weights).forEach(([k,s])=>{
+    if(k==="_meta")return;
+    if(Array.isArray(s)){
+      s.forEach(item=>{
+        if(item&&typeof item==="object"&&item.lbs&&item.reps){
+          const w=parseFloat(item.lbs);const r=parseInt(item.reps);
+          if(!isNaN(w)&&!isNaN(r)&&w<2000)totalVol+=w*r;
+        }
+      });
+    }else if(typeof s==="object"&&s!==null){
+      Object.entries(s).forEach(([sk,v])=>{
+        if(sk==="_meta")return;
+        if(v&&typeof v==="object"&&v.lbs&&v.reps){
+          const w=parseFloat(v.lbs);const r=parseInt(v.reps);
+          if(!isNaN(w)&&!isNaN(r)&&w<2000)totalVol+=w*r;
+        }
+      });
+    }
+  });
+  if(totalVol>0)bd[lg.date]=(bd[lg.date]||0)+totalVol;
+});
 const ds=Object.keys(bd).sort();
 if(ds.length===0){c.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--w3)">No data yet.</div>';return}
-const vals=ds.map(d=>bd[d]);const minY=Math.min(...vals);const maxY=Math.max(...vals);const pad=Math.max(10,Math.round((maxY-minY)*0.2)||10);
-c._c=new Chart(c,{type:"line",data:{labels:ds.map(d=>d.slice(5)),datasets:[{data:vals,borderColor:"#ED4FBA",backgroundColor:"rgba(237,79,186,.12)",fill:true,tension:.3,pointRadius:6,pointBackgroundColor:"#ED4FBA",pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:minY-pad,max:maxY+pad,grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})
+const vals=ds.map(d=>bd[d]);const minY=Math.min(...vals);const maxY=Math.max(...vals);const pad=Math.max(500,Math.round((maxY-minY)*0.15)||500);
+c._c=new Chart(c,{type:"line",data:{labels:ds.map(d=>d.slice(5)),datasets:[{data:vals,borderColor:"#ED4FBA",backgroundColor:"rgba(237,79,186,.12)",fill:true,tension:.3,pointRadius:6,pointBackgroundColor:"#ED4FBA",pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toLocaleString()+" lbs total volume"}}}},scales:{y:{min:Math.max(0,minY-pad),max:maxY+pad,grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:10},callback:function(v){return v>=1000?(v/1000).toFixed(1)+"k":v}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})
 }
+
 
 
 // ===== ATHLETE VIEW =====
@@ -795,36 +820,7 @@ const lifts=[];S.days.forEach((d,di)=>{d.exercises.forEach((w,ei)=>{const e=gx(w
 let h='<div class="cd"><div class="ch"><h3>Exercise progression</h3></div><select class="fsel" id="dSel" onchange="rDCh()">';
 lifts.forEach((l,i)=>h+='<option value="'+i+'">'+l.label+" — "+l.name+'</option>');
 h+='</select><div style="position:relative;width:100%;height:220px;margin-top:10px"><canvas id="dCh"></canvas></div></div>';
-h+='<div class="cd"><div class="ch"><h3>Overall strength trend</h3></div><div style="position:relative;width:100%;height:200px"><canvas id="oCh"></canvas></div></div>';
-
-// Debug panel - shows raw data for troubleshooting
-h+='<div class="cd" style="border-color:var(--amb)"><div class="ch"><h3 style="color:var(--amb)">Debug data</h3></div>';
-h+='<div style="font-size:11px;color:var(--w3);margin-bottom:4px">Workout logs: '+S.log.length+'</div>';
-if(S.log.length>0){
-  S.log.forEach(function(lg,li){
-    h+='<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--sl)">';
-    h+='<span style="color:var(--cyan)">Log '+li+':</span> date='+lg.date+' dayIdx='+lg.dayIdx+' (type:'+typeof lg.dayIdx+') label='+lg.label;
-    h+='<br>weights keys: '+(lg.weights?Object.keys(lg.weights).join(","):"NONE");
-    if(lg.weights){
-      Object.entries(lg.weights).forEach(function(entry){
-        var k=entry[0],v=entry[1];
-        if(k==="_meta")return;
-        h+='<br>&nbsp;&nbsp;ex['+k+']: '+JSON.stringify(v).substring(0,120);
-      });
-    }
-    h+='</div>';
-  });
-}else{h+='<div style="font-size:12px;color:var(--red)">No logs found in S.log</div>';}
-h+='<div style="font-size:11px;color:var(--w3);margin-top:8px">Days config:</div>';
-S.days.forEach(function(d,di){
-  h+='<div style="font-size:11px;color:var(--w2)">Day '+di+': '+d.label+' ('+d.exercises.length+' exercises)</div>';
-  d.exercises.forEach(function(w,ei){
-    var e=gx(w.exId);
-    h+='<div style="font-size:10px;color:var(--w3)">&nbsp;&nbsp;ex['+ei+']: '+(e?e.n:"???")+(e&&isL(e.t)?' [LIFT]':' [skip]')+'</div>';
-  });
-});
-h+='<div style="font-size:11px;color:var(--w3);margin-top:8px">wlogs keys: '+Object.keys(S.wlogs).join(", ")+'</div>';
-h+='</div>';
+h+='<div class="cd"><div class="ch"><h3>Volume load trend</h3></div><div style="position:relative;width:100%;height:200px"><canvas id="oCh"></canvas></div></div>';
 
 el.innerHTML=h;setTimeout(()=>{rDCh();rOCh()},100)}
 
@@ -862,12 +858,37 @@ c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:
 
 function rOCh(){
 const c=document.getElementById("oCh");if(!c)return;if(c._c)c._c.destroy();
-const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(Array.isArray(s)){s.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}else if(typeof s==="object"&&s!==null){Object.values(s).forEach(v=>{if(Array.isArray(v)){v.forEach(item=>{if(item&&typeof item==="object"&&item.lbs){const n=parseFloat(item.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}else if(v&&typeof v==="object"&&v.lbs){const n=parseFloat(v.lbs);if(!isNaN(n)&&n<2000&&n>mx)mx=n}else{const n=parseFloat(v);if(!isNaN(n)&&n<2000&&n>mx)mx=n}})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
+const bd={};
+S.log.forEach(lg=>{
+  if(!lg.weights)return;
+  let totalVol=0;
+  Object.entries(lg.weights).forEach(([k,s])=>{
+    if(k==="_meta")return;
+    if(Array.isArray(s)){
+      s.forEach(item=>{
+        if(item&&typeof item==="object"&&item.lbs&&item.reps){
+          const w=parseFloat(item.lbs);const r=parseInt(item.reps);
+          if(!isNaN(w)&&!isNaN(r)&&w<2000)totalVol+=w*r;
+        }
+      });
+    }else if(typeof s==="object"&&s!==null){
+      Object.entries(s).forEach(([sk,v])=>{
+        if(sk==="_meta")return;
+        if(v&&typeof v==="object"&&v.lbs&&v.reps){
+          const w=parseFloat(v.lbs);const r=parseInt(v.reps);
+          if(!isNaN(w)&&!isNaN(r)&&w<2000)totalVol+=w*r;
+        }
+      });
+    }
+  });
+  if(totalVol>0)bd[lg.date]=(bd[lg.date]||0)+totalVol;
+});
 const ds=Object.keys(bd).sort();
 if(ds.length===0){c.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--w3)">No data yet.</div>';return}
-const vals=ds.map(d=>bd[d]);const minY=Math.min(...vals);const maxY=Math.max(...vals);const pad=Math.max(10,Math.round((maxY-minY)*0.2)||10);
-c._c=new Chart(c,{type:"line",data:{labels:ds.map(d=>d.slice(5)),datasets:[{data:vals,borderColor:"#ED4FBA",backgroundColor:"rgba(237,79,186,.12)",fill:true,tension:.3,pointRadius:6,pointBackgroundColor:"#ED4FBA",pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:minY-pad,max:maxY+pad,grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})
+const vals=ds.map(d=>bd[d]);const minY=Math.min(...vals);const maxY=Math.max(...vals);const pad=Math.max(500,Math.round((maxY-minY)*0.15)||500);
+c._c=new Chart(c,{type:"line",data:{labels:ds.map(d=>d.slice(5)),datasets:[{data:vals,borderColor:"#ED4FBA",backgroundColor:"rgba(237,79,186,.12)",fill:true,tension:.3,pointRadius:6,pointBackgroundColor:"#ED4FBA",pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toLocaleString()+" lbs total volume"}}}},scales:{y:{min:Math.max(0,minY-pad),max:maxY+pad,grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:10},callback:function(v){return v>=1000?(v/1000).toFixed(1)+"k":v}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})
 }
+
 
 
 function rCal(){
