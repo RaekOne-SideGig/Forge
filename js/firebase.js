@@ -26,17 +26,21 @@ let syncTimer = null;
 let fbSyncing = false;
 
 export function syncToFb(S) {
-  if (!S || fbSyncing) return;
+  if (!S) { console.warn("syncToFb: S is null"); return; }
+  if (fbSyncing) { console.log("syncToFb: already syncing, queued"); return; }
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
     fbSyncing = true;
     const syncData = Object.assign({}, S);
     delete syncData.athletes;
-    fbDb.ref(fbUserPath(S)).update(syncData).then(() => {
+    const path = fbUserPath(S);
+    console.log("syncToFb: writing to", path, "keys:", Object.keys(syncData).join(","));
+    fbDb.ref(path).update(syncData).then(() => {
       fbConnected = true; fbSyncing = false; updSync();
+      console.log("syncToFb: SUCCESS");
     }).catch(e => {
       fbConnected = false; fbSyncing = false; updSync();
-      console.warn("Firebase write failed:", e);
+      console.error("syncToFb: FAILED:", e.message);
     });
   }, 1000);
 }
@@ -44,8 +48,11 @@ export function syncToFb(S) {
 export async function loadFromFb(S, svLocal) {
   if (!S) return false;
   try {
-    const snap = await fbDb.ref(fbUserPath(S)).once("value");
+    const path = fbUserPath(S);
+    console.log("loadFromFb: reading from", path);
+    const snap = await fbDb.ref(path).once("value");
     const d = snap.val();
+    console.log("loadFromFb: got data:", d ? "YES" : "NULL", d ? "log:" + (Array.isArray(d.log) ? d.log.length : (d.log ? Object.keys(d.log).length : 0)) : "");
     if (d) {
       const safeLen = (v) => Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.keys(v).length : 0);
       const localLog = safeLen(S.log);
