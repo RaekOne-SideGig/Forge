@@ -47,21 +47,32 @@ export async function loadFromFb(S, svLocal) {
     const snap = await fbDb.ref(fbUserPath(S)).once("value");
     const d = snap.val();
     if (d) {
-      const localLog = (S.log || []).length;
-      const remoteLog = (d.log || []).length;
+      const safeLen = (v) => Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.keys(v).length : 0);
+      const localLog = safeLen(S.log);
+      const remoteLog = safeLen(d.log);
       if (remoteLog > localLog) {
         const preserveRole = S.role;
         const preserveCoach = S.linkedCoach;
         const preserveCoachName = S.coachName;
         Object.assign(S, d);
+        // Firebase may convert arrays to objects - fix them
+        if (S.log && !Array.isArray(S.log)) S.log = Object.values(S.log);
+        if (S.days && !Array.isArray(S.days)) S.days = Object.values(S.days);
+        if (S.ncItems && !Array.isArray(S.ncItems)) S.ncItems = Object.values(S.ncItems);
         if (preserveCoach && !S.linkedCoach) {
           S.linkedCoach = preserveCoach;
           S.coachName = preserveCoachName;
           S.role = preserveRole;
         }
         svLocal(); fbConnected = true; updSync(); return true;
-      } else if (localLog > remoteLog) {
+      } else if (localLog > 0 && localLog > remoteLog) {
         syncToFb(S); fbConnected = true; updSync(); return false;
+      } else if (remoteLog > 0 && localLog === 0) {
+        Object.assign(S, d);
+        if (S.log && !Array.isArray(S.log)) S.log = Object.values(S.log);
+        if (S.days && !Array.isArray(S.days)) S.days = Object.values(S.days);
+        if (S.ncItems && !Array.isArray(S.ncItems)) S.ncItems = Object.values(S.ncItems);
+        svLocal(); fbConnected = true; updSync(); return true;
       } else { fbConnected = true; updSync(); return false; }
     } else { syncToFb(S); fbConnected = true; updSync(); return false; }
   } catch (e) { fbConnected = false; updSync(); return false; }
