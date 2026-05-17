@@ -638,15 +638,32 @@ function rCDCh(){
 const sel=document.getElementById("cdSel");if(!sel)return;
 const lifts=[];S.days.forEach((d,di)=>{d.exercises.forEach((w,ei)=>{const e=gx(w.exId);if(e&&isL(e.t))lifts.push({di,ei})})});
 const l=lifts[parseInt(sel.value)||0];if(!l)return;
-const pts=[];S.log.forEach(lg=>{if(lg.dayIdx===l.di&&lg.weights&&lg.weights[l.ei]){const raw=lg.weights[l.ei];let wts=[];if(typeof raw==="object"&&!Array.isArray(raw)){Object.entries(raw).forEach(([k,s])=>{if(k==="_meta")return;if(s&&s.lbs){const n=parseFloat(s.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}else if(typeof s==="string"||typeof s==="number"){const n=parseFloat(s);if(!isNaN(n)&&n<2000)wts.push(n)}})}else if(Array.isArray(raw)){raw.forEach(v=>{const n=parseFloat(v);if(!isNaN(n))wts.push(n)})}if(wts.length)pts.push({date:lg.date,max:Math.max(...wts)})}});
+const pts=[];
+S.log.forEach(lg=>{
+  if(lg.dayIdx==l.di&&lg.weights&&lg.weights[l.ei]){
+    const raw=lg.weights[l.ei];let wts=[];
+    if(typeof raw==="object"&&!Array.isArray(raw)){
+      Object.entries(raw).forEach(([k,s])=>{if(k==="_meta")return;if(s&&s.lbs){const n=parseFloat(s.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}else if(typeof s==="string"||typeof s==="number"){const n=parseFloat(s);if(!isNaN(n)&&n<2000)wts.push(n)}});
+    }else if(Array.isArray(raw)){raw.forEach(v=>{const n=parseFloat(v);if(!isNaN(n)&&n<2000)wts.push(n)})}
+    if(wts.length)pts.push({date:lg.date,max:Math.max(...wts)});
+  }
+});
 const c=document.getElementById("cdCh");if(!c)return;if(c._c)c._c.destroy();
-c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:[{data:pts.map(p=>p.max),borderColor:"#00F2FF",backgroundColor:"rgba(0,242,255,.08)",fill:true,tension:.3,pointRadius:4,pointBackgroundColor:"#00F2FF",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})}
+if(pts.length===0){c.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--w3)">No logged data yet.<br>Complete workouts to see progress.</div>';return}
+const minY=Math.min(...pts.map(p=>p.max));const maxY=Math.max(...pts.map(p=>p.max));const pad=Math.max(10,Math.round((maxY-minY)*0.2)||10);
+c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:[{data:pts.map(p=>p.max),borderColor:"#00F2FF",backgroundColor:"rgba(0,242,255,.15)",fill:true,tension:.3,pointRadius:6,pointBackgroundColor:"#00F2FF",pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:minY-pad,max:maxY+pad,grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})
+}
+
 
 function rCOCh(){
 const c=document.getElementById("coCh");if(!c)return;if(c._c)c._c.destroy();
-const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(typeof s==="object"&&!Array.isArray(s)){Object.entries(s).forEach(([sk,v])=>{if(sk==="_meta")return;const n=parseFloat(v?.lbs||v);if(!isNaN(n)&&n<2000&&n>mx)mx=n})}else if(Array.isArray(s)){s.forEach(w=>{const n=parseFloat(w);if(!isNaN(n)&&n<2000&&n>mx)mx=n})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
+const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(typeof s==="object"&&!Array.isArray(s)){Object.entries(s).forEach(([sk,v])=>{if(sk==="_meta")return;const n=parseFloat(v?.lbs||v);if(!isNaN(n)&&n<2000&&n>mx)mx=n})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
 const ds=Object.keys(bd).sort();
-c._c=new Chart(c,{type:"line",data:{labels:ds.map(d=>d.slice(5)),datasets:[{data:ds.map(d=>bd[d]),borderColor:"#ED4FBA",backgroundColor:"rgba(237,79,186,.08)",fill:true,tension:.3,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})}
+if(ds.length===0){c.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--w3)">No data yet.</div>';return}
+const vals=ds.map(d=>bd[d]);const minY=Math.min(...vals);const maxY=Math.max(...vals);const pad=Math.max(10,Math.round((maxY-minY)*0.2)||10);
+c._c=new Chart(c,{type:"line",data:{labels:ds.map(d=>d.slice(5)),datasets:[{data:vals,borderColor:"#ED4FBA",backgroundColor:"rgba(237,79,186,.12)",fill:true,tension:.3,pointRadius:6,pointBackgroundColor:"#ED4FBA",pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:minY-pad,max:maxY+pad,grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})
+}
+
 
 // ===== ATHLETE VIEW =====
 function rAthView(){
@@ -782,15 +799,42 @@ function rDCh(){
 const sel=document.getElementById("dSel");if(!sel)return;
 const lifts=[];S.days.forEach((d,di)=>{d.exercises.forEach((w,ei)=>{const e=gx(w.exId);if(e&&isL(e.t))lifts.push({di,ei})})});
 const l=lifts[parseInt(sel.value)||0];if(!l)return;
-const pts=[];S.log.forEach(lg=>{if(lg.dayIdx===l.di&&lg.weights&&lg.weights[l.ei]){const raw=lg.weights[l.ei];let wts=[];if(typeof raw==="object"&&!Array.isArray(raw)){Object.entries(raw).forEach(([k,s])=>{if(k==="_meta")return;if(s&&s.lbs){const n=parseFloat(s.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}else if(typeof s==="string"||typeof s==="number"){const n=parseFloat(s);if(!isNaN(n)&&n<2000)wts.push(n)}})}else if(Array.isArray(raw)){raw.forEach(v=>{const n=parseFloat(v);if(!isNaN(n))wts.push(n)})}if(wts.length)pts.push({date:lg.date,max:Math.max(...wts)})}});
+const pts=[];
+S.log.forEach(lg=>{
+  const diMatch=lg.dayIdx==l.di;
+  const hasW=lg.weights&&lg.weights[l.ei];
+  if(diMatch&&hasW){
+    const raw=lg.weights[l.ei];
+    let wts=[];
+    if(typeof raw==="object"&&!Array.isArray(raw)){
+      Object.entries(raw).forEach(([k,s])=>{
+        if(k==="_meta")return;
+        if(s&&s.lbs){const n=parseFloat(s.lbs);if(!isNaN(n)&&n<2000)wts.push(n)}
+        else if(typeof s==="string"||typeof s==="number"){const n=parseFloat(s);if(!isNaN(n)&&n<2000)wts.push(n)}
+      });
+    }else if(Array.isArray(raw)){raw.forEach(v=>{const n=parseFloat(v);if(!isNaN(n)&&n<2000)wts.push(n)})}
+    if(wts.length)pts.push({date:lg.date,max:Math.max(...wts)});
+  }
+});
+console.log("Dashboard chart pts:",pts,"for lift:",l,"from",S.log.length,"logs");
 const c=document.getElementById("dCh");if(!c)return;if(c._c)c._c.destroy();
-c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:[{data:pts.map(p=>p.max),borderColor:"#00F2FF",backgroundColor:"rgba(0,242,255,.08)",fill:true,tension:.3,pointRadius:4,pointBackgroundColor:"#00F2FF",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})}
+if(pts.length===0){c.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--w3)">No logged data yet for this exercise.<br>Complete a workout to see your progress.</div>';return}
+const minY=Math.min(...pts.map(p=>p.max));
+const maxY=Math.max(...pts.map(p=>p.max));
+const pad=Math.max(10,Math.round((maxY-minY)*0.2)||10);
+c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:[{data:pts.map(p=>p.max),borderColor:"#00F2FF",backgroundColor:"rgba(0,242,255,.15)",fill:true,tension:.3,pointRadius:6,pointBackgroundColor:"#00F2FF",pointBorderColor:"#00F2FF",pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:minY-pad,max:maxY+pad,grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})
+}
+
 
 function rOCh(){
 const c=document.getElementById("oCh");if(!c)return;if(c._c)c._c.destroy();
-const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(typeof s==="object"&&!Array.isArray(s)){Object.entries(s).forEach(([sk,v])=>{if(sk==="_meta")return;const n=parseFloat(v?.lbs||v);if(!isNaN(n)&&n<2000&&n>mx)mx=n})}else if(Array.isArray(s)){s.forEach(w=>{const n=parseFloat(w);if(!isNaN(n)&&n<2000&&n>mx)mx=n})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
+const bd={};S.log.forEach(lg=>{if(!lg.weights)return;let mx=0;Object.entries(lg.weights).forEach(([k,s])=>{if(k==="_meta")return;if(typeof s==="object"&&!Array.isArray(s)){Object.entries(s).forEach(([sk,v])=>{if(sk==="_meta")return;const n=parseFloat(v?.lbs||v);if(!isNaN(n)&&n<2000&&n>mx)mx=n})}});if(mx>0&&(!bd[lg.date]||mx>bd[lg.date]))bd[lg.date]=mx});
 const ds=Object.keys(bd).sort();
-c._c=new Chart(c,{type:"line",data:{labels:ds.map(d=>d.slice(5)),datasets:[{data:ds.map(d=>bd[d]),borderColor:"#ED4FBA",backgroundColor:"rgba(237,79,186,.08)",fill:true,tension:.3,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})}
+if(ds.length===0){c.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--w3)">No data yet.</div>';return}
+const vals=ds.map(d=>bd[d]);const minY=Math.min(...vals);const maxY=Math.max(...vals);const pad=Math.max(10,Math.round((maxY-minY)*0.2)||10);
+c._c=new Chart(c,{type:"line",data:{labels:ds.map(d=>d.slice(5)),datasets:[{data:vals,borderColor:"#ED4FBA",backgroundColor:"rgba(237,79,186,.12)",fill:true,tension:.3,pointRadius:6,pointBackgroundColor:"#ED4FBA",pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:minY-pad,max:maxY+pad,grid:{color:"rgba(192,192,192,.06)"},ticks:{color:"#A8A8A8",font:{size:11}}},x:{grid:{display:false},ticks:{color:"#A8A8A8",font:{size:10}}}}}})
+}
+
 
 function rCal(){
 const el=document.getElementById("aC");const yr=calY,mo=calM;
