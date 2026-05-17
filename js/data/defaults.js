@@ -1,6 +1,5 @@
 // Default configuration
 export const SWAP={1:4,4:1,5:6,6:5,32:36,36:32,34:37,37:34,35:38,38:35,50:55,55:50,11:17,17:11,13:14,14:13,21:24,24:21,60:61,61:60,40:42,42:40};
-const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 export const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
 
