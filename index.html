@@ -1148,6 +1148,14 @@ function startWorkout(){
   if(!S.wlogs[wk])S.wlogs[wk]={};
   if(!S.wlogs[wk]._meta)S.wlogs[wk]._meta={};
   S.wlogs[wk]._meta.startTime=Date.now();
+  // Clear all done flags so user must re-confirm each set
+  Object.entries(S.wlogs[wk]).forEach(([k,v])=>{
+    if(k==="_meta")return;
+    if(typeof v==="object"&&v!==null){
+      Object.values(v).forEach(set=>{if(set&&typeof set==="object")delete set.done});
+    }
+    if(Array.isArray(v)){v.forEach(set=>{if(set&&typeof set==="object")delete set.done})}
+  });
   sv();rExec();
 }
 
