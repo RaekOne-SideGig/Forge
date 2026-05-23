@@ -96,9 +96,10 @@ async function selectAthlete(uid){
       if(athleteData.days&&!Array.isArray(athleteData.days))athleteData.days=Object.values(athleteData.days);
       if(athleteData.log&&!Array.isArray(athleteData.log))athleteData.log=Object.values(athleteData.log);
       if(athleteData.ncItems&&!Array.isArray(athleteData.ncItems))athleteData.ncItems=Object.values(athleteData.ncItems);
-      // Fix exercises arrays within days
-      if(athleteData.days){athleteData.days.forEach(d=>{if(d.exercises&&!Array.isArray(d.exercises))d.exercises=Object.values(d.exercises)})}
+      if(athleteData.days){athleteData.days.forEach(d=>{if(d&&d.exercises&&!Array.isArray(d.exercises))d.exercises=Object.values(d.exercises)})}
     }
+    // Switch to architect tab so the team routing doesn't clear selectedAthlete
+    coachTab="arch";
     rView();
   }catch(e){alert("Could not load athlete data: "+e.message)}
 }
@@ -289,7 +290,7 @@ ctabs+='</div>';
 let editLabel=selectedAthlete?coachAthletes.find(a=>a.uid===selectedAthlete)?.name||"Athlete":"My Program";
 let topBar=(S.role==="coach"||S.role==="both")?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:var(--ob3);border:1px solid var(--sb);border-radius:8px;font-size:13px"><span style="color:var(--w3)">Editing:</span><span style="color:var(--cyan);font-weight:600">'+editLabel+'</span>'+(selectedAthlete?'<button class="bs" style="margin-left:auto;font-size:11px;padding:3px 8px;min-height:28px" onclick="selectedAthlete=null;athleteData=null;rView()">Back to mine</button>':'')+'</div>':'';
 el.innerHTML=ctabs+topBar+'<div id="cC"></div>';
-if(coachTab==="team"){selectedAthlete=null;athleteData=null;rTeam()}else if(coachTab==="arch")rArch();else if(coachTab==="lib")rLib();else if(coachTab==="rec")rCoachRec();else rCoachDash()}
+if(coachTab==="team"){rTeam()}else if(coachTab==="arch")rArch();else if(coachTab==="lib")rLib();else if(coachTab==="rec")rCoachRec();else rCoachDash()}
 
 function rTeam(){
 var el=document.getElementById("cC");if(!el)return;
