@@ -38,7 +38,7 @@ function cV(d) {
       const e = gx(w.exId);
       if (!e || e.p === "Cardio") return;
       v[e.p] = (v[e.p] || 0) + w.sets;
-      (e.s || []).forEach(s => { if (s !== "Cardio") v[s] = (v[s] || 0) + Math.ceil(w.sets / 2); });
+      (e.s || []).forEach(s => { if (s !== "Cardio") v[s] = (v[s] || 0) + Math.max(1, Math.round(w.sets * 0.75)); });
     });
     return v;
   }
@@ -530,7 +530,7 @@ function renderCoachCalendar(log, days){
   return h;
 }
 
-const FZ=[{m:"Shoulders",x:.13,y:.14,w:.16,h:.06},{m:"Shoulders",x:.71,y:.14,w:.16,h:.06},{m:"Chest",x:.25,y:.16,w:.50,h:.14},{m:"Core",x:.30,y:.32,w:.40,h:.14},{m:"Biceps",x:.05,y:.20,w:.14,h:.16},{m:"Biceps",x:.81,y:.20,w:.14,h:.16},{m:"Forearms",x:.02,y:.37,w:.12,h:.18},{m:"Forearms",x:.86,y:.37,w:.12,h:.18},{m:"Quads",x:.22,y:.48,w:.22,h:.22},{m:"Quads",x:.56,y:.48,w:.22,h:.22},{m:"Calves",x:.24,y:.72,w:.18,h:.18},{m:"Calves",x:.58,y:.72,w:.18,h:.18}];
+const FZ=[{m:"Shoulders",x:.13,y:.14,w:.16,h:.06},{m:"Shoulders",x:.71,y:.14,w:.16,h:.06},{m:"Chest",x:.25,y:.16,w:.50,h:.14},{m:"Core",x:.30,y:.32,w:.40,h:.14},{m:"Biceps",x:.05,y:.20,w:.14,h:.16},{m:"Biceps",x:.81,y:.20,w:.14,h:.16},{m:"Forearms",x:.02,y:.37,w:.12,h:.18},{m:"Forearms",x:.86,y:.37,w:.12,h:.18},{m:"Hip flexors",x:.30,y:.44,w:.12,h:.06},{m:"Hip flexors",x:.58,y:.44,w:.12,h:.06},{m:"Adductors",x:.38,y:.52,w:.10,h:.14},{m:"Adductors",x:.52,y:.52,w:.10,h:.14},{m:"Abductors",x:.18,y:.46,w:.08,h:.10},{m:"Abductors",x:.74,y:.46,w:.08,h:.10},{m:"Quads",x:.22,y:.48,w:.22,h:.22},{m:"Quads",x:.56,y:.48,w:.22,h:.22},{m:"Calves",x:.24,y:.72,w:.18,h:.18},{m:"Calves",x:.58,y:.72,w:.18,h:.18}];
 const BZ=[{m:"Traps",x:.30,y:.12,w:.40,h:.06},{m:"Shoulders",x:.10,y:.14,w:.16,h:.06},{m:"Shoulders",x:.74,y:.14,w:.16,h:.06},{m:"Back",x:.25,y:.18,w:.50,h:.14},{m:"Lats",x:.20,y:.24,w:.15,h:.10},{m:"Lats",x:.65,y:.24,w:.15,h:.10},{m:"Triceps",x:.04,y:.20,w:.14,h:.16},{m:"Triceps",x:.82,y:.20,w:.14,h:.16},{m:"Glutes",x:.28,y:.35,w:.44,h:.10},{m:"Hamstrings",x:.22,y:.48,w:.22,h:.22},{m:"Hamstrings",x:.56,y:.48,w:.22,h:.22},{m:"Calves",x:.24,y:.72,w:.18,h:.18},{m:"Calves",x:.58,y:.72,w:.18,h:.18},{m:"Rear delts",x:.12,y:.14,w:.12,h:.05},{m:"Rear delts",x:.76,y:.14,w:.12,h:.05}];
 
 function paintCoachHeat(cid,front,vol){
@@ -566,7 +566,7 @@ const vol={};
 days.forEach(d=>{if(!d||!d.exercises)return;d.exercises.forEach(w=>{
 const e=gx(w.exId);if(!e||e.p==="Cardio")return;
 vol[e.p]=(vol[e.p]||0)+w.sets;
-(e.s||[]).forEach(s=>{if(s!=="Cardio")vol[s]=(vol[s]||0)+Math.ceil(w.sets/2)});
+(e.s||[]).forEach(s=>{if(s!=="Cardio")vol[s]=(vol[s]||0)+Math.max(1,Math.round(w.sets*0.75))});
 })});
 
 let h='<div class="mg"><div class="mc"><div class="l">Workout days</div><div class="v">'+days.length+'</div></div><div class="mc"><div class="l">Logged</div><div class="v">'+log.length+'</div></div><div class="mc"><div class="l">Exercises</div><div class="v">'+(days.reduce((t,d)=>t+(d&&d.exercises?d.exercises.length:0),0))+'</div></div></div>';
@@ -581,6 +581,7 @@ h+='<div class="cd"><div class="ch"><h3>Volume load trend</h3></div><div style="
 
 // Heat map
 h+='<div class="cd"><div class="ch"><h3>Weekly load heat map</h3><span style="font-size:10px;color:var(--w3)">Based on programmed sets</span></div>';
+h+='<div style="display:flex;justify-content:center;gap:10px;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:3px;font-size:10px"><span style="width:10px;height:10px;border-radius:50%;background:#1D9E75;display:inline-block"></span>Low</span><span style="display:inline-flex;align-items:center;gap:3px;font-size:10px"><span style="width:10px;height:10px;border-radius:50%;background:#7F77DD;display:inline-block"></span>Mid</span><span style="display:inline-flex;align-items:center;gap:3px;font-size:10px"><span style="width:10px;height:10px;border-radius:50%;background:#ED4FBA;display:inline-block"></span>High</span></div>';
 h+='<div style="display:flex;justify-content:center;gap:20px;margin-top:10px;position:relative">';
 h+='<div style="text-align:center"><div style="position:relative;width:140px;height:290px"><img src="'+BF+'" style="width:140px;height:290px;border-radius:8px;mix-blend-mode:luminosity"><canvas id="cvCF" style="position:absolute;top:0;left:0;width:140px;height:290px;mix-blend-mode:color;opacity:.8"></canvas></div><div style="font-size:10px;color:var(--w3);margin-top:4px">Front</div></div>';
 h+='<div style="text-align:center"><div style="position:relative;width:140px;height:290px"><img src="'+BB+'" style="width:140px;height:290px;border-radius:8px;mix-blend-mode:luminosity"><canvas id="cvCB" style="position:absolute;top:0;left:0;width:140px;height:290px;mix-blend-mode:color;opacity:.8"></canvas></div><div style="font-size:10px;color:var(--w3);margin-top:4px">Back</div></div>';

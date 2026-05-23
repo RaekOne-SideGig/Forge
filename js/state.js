@@ -67,7 +67,7 @@ export function cV(cD) {
     const e = gx(w.exId);
     if (!e || e.p === "Cardio") return;
     v[e.p] = (v[e.p] || 0) + w.sets;
-    (e.s || []).forEach(s => { if (s !== "Cardio") v[s] = (v[s] || 0) + Math.ceil(w.sets / 2); });
+    (e.s || []).forEach(s => { if (s !== "Cardio") v[s] = (v[s] || 0) + Math.max(1, Math.round(w.sets * 0.75)); });
   });
   return v;
 }
