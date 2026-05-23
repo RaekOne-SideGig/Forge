@@ -409,6 +409,42 @@ function removeWarmup(wi){
   sv();rView();
 }
 
+function removeAutoWarmup(wi){
+  var d=cDay(cD);
+  var wu=getWU();
+  d.warmups=wu.map(w=>({name:w.name,exId:w.id||0}));
+  d.warmups.splice(wi,1);
+  if(d.warmups.length===0)delete d.warmups;
+  sv();rView();
+}
+
+function editWarmup(wi){
+  var d=cDay(cD);
+  if(!d.warmups)return;
+  var w=d.warmups[wi];
+  var ov=document.getElementById("ovl");
+  ov.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><h3>Edit warm-up</h3><div style="font-weight:600;margin-bottom:8px">'+(w.name||"Exercise")+'</div><input class="fi" id="wuEditSearch" placeholder="Search to swap..." oninput="searchEditWarmup('+wi+')" autocomplete="off"><div id="wuEditResults"></div><button class="bs" onclick="clO()" style="width:100%;margin-top:10px">Cancel</button></div></div>';
+  ov.style.display="block";
+}
+
+function searchEditWarmup(wi){
+  var q=(document.getElementById("wuEditSearch").value||"").toLowerCase();
+  if(q.length<2){document.getElementById("wuEditResults").innerHTML="";return}
+  var res=aDB().filter(e=>(e.n+" "+e.p+" "+e.t).toLowerCase().includes(q)).slice(0,8);
+  document.getElementById("wuEditResults").innerHTML=res.length?'<div class="sr">'+res.map(e=>'<div class="sri" onclick="swapWarmup('+wi+','+e.id+')"><span style="flex:1">'+e.n+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.p+'</span></div>').join("")+'</div>':'';
+}
+
+function swapWarmup(wi,exId){
+  var d=cDay(cD);
+  if(!d.warmups){
+    var wu=getWU();
+    d.warmups=wu.map(w=>({name:w.name,exId:w.id||0}));
+  }
+  var e=gx(exId);
+  d.warmups[wi]={name:e?e.n:"Exercise",exId:exId};
+  sv();clO();rView();
+}
+
 function resetWarmups(){
   var d=cDay(cD);
   delete d.warmups;
@@ -431,9 +467,9 @@ var customWU=d.warmups||null;
 var displayWU=customWU||wu;
 h+='<div style="font-size:12px;color:var(--w2);margin:8px 0 4px;display:flex;justify-content:space-between;align-items:center">Warm-up '+(customWU?'(custom)':'(auto-matched)')+'<div style="display:flex;gap:4px">'+(customWU?'<button class="bs" style="font-size:10px;padding:2px 6px;min-height:24px" onclick="resetWarmups()">Auto</button>':'')+'<button class="bs" style="font-size:10px;padding:2px 6px;min-height:24px" onclick="addWarmup()">+ Add</button></div></div>';
 if(customWU){
-h+=customWU.map((w,wi)=>'<div class="er"><span class="en" style="font-weight:400">'+(typeof w==="object"?w.name:gx(w)?.n||"?")+'</span><button class="dbtn" style="font-size:10px;padding:2px 6px" onclick="removeWarmup('+wi+')">✕</button></div>').join("");
+h+=customWU.map((w,wi)=>'<div class="er" style="display:flex;align-items:center;gap:6px"><span class="en" style="font-weight:400;flex:1">'+(typeof w==="object"?w.name:gx(w)?.n||"?")+'</span><button class="sbtn" style="font-size:10px;padding:2px 6px" onclick="editWarmup('+wi+')">Edit</button><button class="dbtn" style="font-size:10px;padding:2px 6px" onclick="removeWarmup('+wi+')">✕</button></div>').join("");
 }else{
-h+=wu.map(w=>{var ex=aDB().find(e=>e.n===w.name);return '<div class="er"><span class="en">'+w.name+'</span><span class="bg '+(ex?tB(ex.t):"ba")+'" style="font-size:10px">'+(ex?ex.t:"mobility")+'</span><span class="wr">'+w.reason+'</span></div>'}).join("");
+h+=wu.map((w,wi)=>'<div class="er" style="display:flex;align-items:center;gap:6px"><span class="en" style="flex:1">'+w.name+'</span><span class="bg '+(aDB().find(e=>e.n===w.name)?tB(aDB().find(e=>e.n===w.name).t):"ba")+'" style="font-size:10px">'+(aDB().find(e=>e.n===w.name)?aDB().find(e=>e.n===w.name).t:"mobility")+'</span><button class="dbtn" style="font-size:10px;padding:2px 6px" onclick="removeAutoWarmup('+wi+')">✕</button></div>').join("");
 }
 h+='<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px"><span style="font-size:12px;color:var(--w2)">Working sets &amp; cardio</span><button class="bs" onclick="showAdd(\'working\')">+ Add</button></div>';
 let lastSS="";h+=d.exercises.map((w,i)=>{const e=gx(w.exId);if(!e)return "";
@@ -464,23 +500,114 @@ el.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if
 el.style.display="block"}
 function svNC(){const v=(document.getElementById("ncN").value||"").trim();if(!v)return;S.ncItems.push(v);sv();clO();rCoachRec()}
 
+
+function renderCoachCalendar(log, days){
+  const now=new Date();
+  const y=now.getFullYear(),m=now.getMonth();
+  const first=new Date(y,m,1).getDay();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  
+  let h='<div style="font-size:13px;font-weight:600;text-align:center;margin-bottom:8px">'+MN[m]+' '+y+'</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:10px;text-align:center">';
+  ["Su","Mo","Tu","We","Th","Fr","Sa"].forEach(d=>h+='<div style="color:var(--w3);padding:4px">'+d+'</div>');
+  
+  for(let i=0;i<first;i++)h+='<div></div>';
+  
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const dayLog=log.filter(l=>l.date===ds);
+    const hasWorkout=dayLog.length>0;
+    const label=hasWorkout?dayLog.map(l=>l.label).join(", "):"";
+    const bg=hasWorkout?"background:var(--cd);border:1px solid var(--cyan);border-radius:4px":"";
+    h+='<div style="padding:4px;'+bg+'" title="'+label+'">';
+    h+='<div style="font-weight:'+(hasWorkout?"600":"400")+';color:'+(hasWorkout?"var(--cyan)":"var(--w3)")+'">'+d+'</div>';
+    if(hasWorkout)h+='<div style="font-size:7px;color:var(--cyan);overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+dayLog[0].label+'</div>';
+    h+='</div>';
+  }
+  h+='</div>';
+  return h;
+}
+
+const FZ=[{m:"Shoulders",x:.13,y:.14,w:.16,h:.06},{m:"Shoulders",x:.71,y:.14,w:.16,h:.06},{m:"Chest",x:.25,y:.16,w:.50,h:.14},{m:"Core",x:.30,y:.32,w:.40,h:.14},{m:"Biceps",x:.05,y:.20,w:.14,h:.16},{m:"Biceps",x:.81,y:.20,w:.14,h:.16},{m:"Forearms",x:.02,y:.37,w:.12,h:.18},{m:"Forearms",x:.86,y:.37,w:.12,h:.18},{m:"Quads",x:.22,y:.48,w:.22,h:.22},{m:"Quads",x:.56,y:.48,w:.22,h:.22},{m:"Calves",x:.24,y:.72,w:.18,h:.18},{m:"Calves",x:.58,y:.72,w:.18,h:.18}];
+const BZ=[{m:"Traps",x:.30,y:.12,w:.40,h:.06},{m:"Shoulders",x:.10,y:.14,w:.16,h:.06},{m:"Shoulders",x:.74,y:.14,w:.16,h:.06},{m:"Back",x:.25,y:.18,w:.50,h:.14},{m:"Lats",x:.20,y:.24,w:.15,h:.10},{m:"Lats",x:.65,y:.24,w:.15,h:.10},{m:"Triceps",x:.04,y:.20,w:.14,h:.16},{m:"Triceps",x:.82,y:.20,w:.14,h:.16},{m:"Glutes",x:.28,y:.35,w:.44,h:.10},{m:"Hamstrings",x:.22,y:.48,w:.22,h:.22},{m:"Hamstrings",x:.56,y:.48,w:.22,h:.22},{m:"Calves",x:.24,y:.72,w:.18,h:.18},{m:"Calves",x:.58,y:.72,w:.18,h:.18},{m:"Rear delts",x:.12,y:.14,w:.12,h:.05},{m:"Rear delts",x:.76,y:.14,w:.12,h:.05}];
+
+function paintCoachHeat(cid,front,vol){
+  const c=document.getElementById(cid);if(!c)return;
+  const ctx=c.getContext("2d");
+  c.width=140;c.height=290;
+  ctx.clearRect(0,0,140,290);
+  const zones=front?FZ:BZ;
+  zones.forEach(z=>{
+    const s=vol[z.m]||0;if(s<1)return;
+    ctx.fillStyle=hC(s);
+    ctx.beginPath();
+    ctx.ellipse(z.x*140+z.w*70,z.y*290+z.h*145,z.w*77,z.h*160,0,0,Math.PI*2);
+    ctx.fill();
+  });
+}
+
 function rCoachDash(){
 const el=document.getElementById("cC");
-const lifts=[];S.days.forEach((d,di)=>{d.exercises.forEach((w,ei)=>{const e=gx(w.exId);if(e&&isL(e.t))lifts.push({name:e.n,di,ei,label:d.label})})});
-let h='<div class="mg"><div class="mc"><div class="l">Workout days</div><div class="v">'+S.days.length+'</div></div><div class="mc"><div class="l">Logged</div><div class="v">'+S.log.length+'</div></div><div class="mc"><div class="l">Exercises</div><div class="v">'+aDB().length+'</div></div><div class="mc"><div class="l">Bodyweight</div><div class="v">'+S.weight+' lbs</div></div></div>';
+const data=selectedAthlete&&athleteData?athleteData:S;
+const days=data.days||[];
+const log=data.log||[];
+if(!Array.isArray(days)){data.days=Object.values(days)}
+if(!Array.isArray(log)){data.log=Object.values(log)}
+
+// Fix exercises arrays
+days.forEach(d=>{if(d&&d.exercises&&!Array.isArray(d.exercises))d.exercises=Object.values(d.exercises)});
+
+const lifts=[];days.forEach((d,di)=>{if(d&&d.exercises)d.exercises.forEach((w,ei)=>{const e=gx(w.exId);if(e&&isL(e.t))lifts.push({name:e.n,di,ei,label:d.label})})});
+
+// Volume per muscle for heat map
+const vol={};
+days.forEach(d=>{if(!d||!d.exercises)return;d.exercises.forEach(w=>{
+const e=gx(w.exId);if(!e||e.p==="Cardio")return;
+vol[e.p]=(vol[e.p]||0)+w.sets;
+(e.s||[]).forEach(s=>{if(s!=="Cardio")vol[s]=(vol[s]||0)+Math.ceil(w.sets/2)});
+})});
+
+let h='<div class="mg"><div class="mc"><div class="l">Workout days</div><div class="v">'+days.length+'</div></div><div class="mc"><div class="l">Logged</div><div class="v">'+log.length+'</div></div><div class="mc"><div class="l">Exercises</div><div class="v">'+(days.reduce((t,d)=>t+(d&&d.exercises?d.exercises.length:0),0))+'</div></div></div>';
+
+// Exercise progression chart
 h+='<div class="cd"><div class="ch"><h3>Exercise progression</h3></div><select class="fsel" id="cdSel" onchange="rCDCh()">';
 lifts.forEach((l,i)=>h+='<option value="'+i+'">'+l.label+" — "+l.name+'</option>');
 h+='</select><div style="position:relative;width:100%;height:220px;margin-top:10px"><canvas id="cdCh"></canvas></div></div>';
+
+// Volume load chart
 h+='<div class="cd"><div class="ch"><h3>Volume load trend</h3></div><div style="position:relative;width:100%;height:200px"><canvas id="coCh"></canvas></div></div>';
+
+// Heat map
+h+='<div class="cd"><div class="ch"><h3>Weekly load heat map</h3><span style="font-size:10px;color:var(--w3)">Based on programmed sets</span></div>';
+h+='<div style="display:flex;justify-content:center;gap:20px;margin-top:10px;position:relative">';
+h+='<div style="text-align:center"><div style="position:relative;width:140px;height:290px"><img src="'+BF+'" style="width:140px;height:290px;border-radius:8px;mix-blend-mode:luminosity"><canvas id="cvCF" style="position:absolute;top:0;left:0;width:140px;height:290px;mix-blend-mode:color;opacity:.8"></canvas></div><div style="font-size:10px;color:var(--w3);margin-top:4px">Front</div></div>';
+h+='<div style="text-align:center"><div style="position:relative;width:140px;height:290px"><img src="'+BB+'" style="width:140px;height:290px;border-radius:8px;mix-blend-mode:luminosity"><canvas id="cvCB" style="position:absolute;top:0;left:0;width:140px;height:290px;mix-blend-mode:color;opacity:.8"></canvas></div><div style="font-size:10px;color:var(--w3);margin-top:4px">Back</div></div>';
+h+='</div></div>';
+
+// Calendar
+h+='<div class="cd"><div class="ch"><h3>Workout calendar</h3></div>';
+h+=renderCoachCalendar(log, days);
+h+='</div>';
+
+// Export
 h+='<div class="cd"><div class="ch"><h3>Export data</h3></div><div style="display:flex;gap:8px;margin-bottom:8px"><div class="cf" style="flex:1"><label>From</label><input class="fi" type="date" id="expFrom"></div><div class="cf" style="flex:1"><label>To</label><input class="fi" type="date" id="expTo"></div></div><button class="bs bsa" onclick="exportData()" style="width:100%;padding:10px;min-height:44px">Download CSV</button></div>';
-el.innerHTML=h;setTimeout(()=>{rCDCh();rCOCh()},100)}
+
+el.innerHTML=h;
+setTimeout(()=>{
+  rCDCh();rCOCh();
+  // Paint heat map
+  paintCoachHeat("cvCF",true,vol);
+  paintCoachHeat("cvCB",false,vol);
+},100)}
+
 
 function rCDCh(){
 const sel=document.getElementById("cdSel");if(!sel)return;
-const lifts=[];S.days.forEach((d,di)=>{d.exercises.forEach((w,ei)=>{const e=gx(w.exId);if(e&&isL(e.t))lifts.push({di,ei})})});
+const lifts=[];var _data=selectedAthlete&&athleteData?athleteData:S;var _days=_data.days||[];_days.forEach((d,di)=>{if(d&&d.exercises)d.exercises.forEach((w,ei)=>{const e=gx(w.exId);if(e&&isL(e.t))lifts.push({di,ei})})});
 const l=lifts[parseInt(sel.value)||0];if(!l)return;
 const pts=[];
-S.log.forEach(lg=>{
+var _log=_data.log||[];_log.forEach(lg=>{
   if(lg.dayIdx==l.di&&lg.weights&&lg.weights[l.ei]){
     const raw=lg.weights[l.ei];let wts=[];
     if(typeof raw==="object"&&!Array.isArray(raw)){
@@ -498,7 +625,7 @@ c._c=new Chart(c,{type:"line",data:{labels:pts.map(p=>p.date.slice(5)),datasets:
 function rCOCh(){
 const c=document.getElementById("coCh");if(!c)return;if(c._c)c._c.destroy();
 const bd={};
-S.log.forEach(lg=>{
+var _data=selectedAthlete&&athleteData?athleteData:S;var _log=_data.log||[];_log.forEach(lg=>{
   if(!lg.weights)return;
   let totalVol=0;
   Object.entries(lg.weights).forEach(([k,s])=>{
@@ -1086,6 +1213,10 @@ window.addWarmup = addWarmup;
 window.searchWarmup = searchWarmup;
 window.pickWarmup = pickWarmup;
 window.removeWarmup = removeWarmup;
+window.removeAutoWarmup = removeAutoWarmup;
+window.editWarmup = editWarmup;
+window.searchEditWarmup = searchEditWarmup;
+window.swapWarmup = swapWarmup;
 window.resetWarmups = resetWarmups;
 window.editSearch = editSearch;
 window.endWorkout = endWorkout;
@@ -1115,6 +1246,8 @@ window.rCDCh = rCDCh;
 window.rCOCh = rCOCh;
 window.rCal = rCal;
 window.rCoachDash = rCoachDash;
+window.renderCoachCalendar = renderCoachCalendar;
+window.paintCoachHeat = paintCoachHeat;
 window.rCoachRec = rCoachRec;
 window.rCoachView = rCoachView;
 window.rDCh = rDCh;
