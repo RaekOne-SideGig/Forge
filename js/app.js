@@ -272,7 +272,9 @@ if(S.role==="both"){
 }
 // Load athletes then render
 if(S.role==="coach"||S.role==="both"){
-  loadCoachAthletes().then(()=>rView()).catch(()=>rView());
+  if(coachAthletes.length===0){
+    loadCoachAthletes().then(()=>rView()).catch(()=>rView());
+  }else{rView()}
 }else{rView()}}
 
 function updCtxWt(){const el=document.getElementById("ctxWt");if(el)el.textContent=S.weight+" lbs"}
@@ -377,6 +379,41 @@ function copyInvite(){
   if(navigator.clipboard){navigator.clipboard.writeText(S.inviteCode).then(()=>alert("Copied: "+S.inviteCode))}
   else{alert("Your invite code: "+S.inviteCode)}
 }
+
+function addWarmup(){
+  var ov=document.getElementById("ovl");
+  ov.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()"><div class="ovl-inner"><h3>Add warm-up exercise</h3><input class="fi" id="wuSearch" placeholder="Search exercises..." oninput="searchWarmup()" autocomplete="off"><div id="wuResults"></div><button class="bs" onclick="clO()" style="width:100%;margin-top:10px">Cancel</button></div></div>';
+  ov.style.display="block";
+}
+
+function searchWarmup(){
+  var q=(document.getElementById("wuSearch").value||"").toLowerCase();
+  if(q.length<2){document.getElementById("wuResults").innerHTML="";return}
+  var res=aDB().filter(e=>(e.n+" "+e.p+" "+e.t).toLowerCase().includes(q)).slice(0,8);
+  document.getElementById("wuResults").innerHTML=res.length?'<div class="sr">'+res.map(e=>'<div class="sri" onclick="pickWarmup('+e.id+')"><span style="flex:1">'+e.n+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.p+'</span></div>').join("")+'</div>':'';
+}
+
+function pickWarmup(exId){
+  var d=cDay(cD);
+  if(!d.warmups)d.warmups=getWU().map(w=>({name:w.name,exId:w.id||0}));
+  var e=gx(exId);
+  d.warmups.push({name:e?e.n:"Exercise",exId:exId});
+  sv();clO();rView();
+}
+
+function removeWarmup(wi){
+  var d=cDay(cD);
+  if(!d.warmups)return;
+  d.warmups.splice(wi,1);
+  if(d.warmups.length===0)delete d.warmups;
+  sv();rView();
+}
+
+function resetWarmups(){
+  var d=cDay(cD);
+  delete d.warmups;
+  sv();rView();
+}
 function rArch(){
 const el=document.getElementById("cC");
 var days=selectedAthlete&&athleteData&&athleteData.days?athleteData.days:S.days;
@@ -396,7 +433,7 @@ let lastSS="";h+=d.exercises.map((w,i)=>{const e=gx(w.exId);if(!e)return "";
 let row="";const curSS=w.ss||"";
 if(curSS&&curSS!==lastSS)row+='<div class="ss-group"><div class="ss-label">Superset '+curSS+'</div>';
 const restStr=w.rest!==undefined&&w.rest>0?' <span class="wr">Rest: '+(w.rest>=60?Math.floor(w.rest/60)+":"+(w.rest%60<10?"0":"")+w.rest%60:w.rest+"s")+'</span>':"";
-row+='<div class="er" data-di="'+i+'"><span class="en">'+e.n+'</span>'+(e.t==="cardio"?'<span class="ed">'+w.reps+'</span>':'<span class="ed">'+w.sets+" x "+addTips(w.reps)+'</span>')+'<span class="bg '+tB(e.t)+'" style="font-size:10px">'+(e.p==="Cardio"?"Cardio":e.p)+'</span>'+restStr+'<span class="dgrip" data-di="'+i+'" ontouchstart="tds2(event,'+i+')" ontouchmove="tdm2(event)" ontouchend="tde2(event)" onmousedown="mds2(event,'+i+')">⠿</span><div class="move-btns"><button class="move-btn" onclick="moveEx('+i+',-1)">▲</button><button class="move-btn" onclick="moveEx('+i+',1)">▼</button></div><button class="sbtn" onclick="editEx('+i+')">Edit</button>'+(SWAP[w.exId]?'<button class="sbtn" onclick="cDay(cD).exercises['+i+'].exId=SWAP['+w.exId+'];sv();rView()">Swap</button>':'')+'<button class="dbtn" onclick="cDay(cD).exercises.splice('+i+',1);sv();rView()">Del</button></div>';
+row+='<div class="er" data-di="'+i+'"><span class="en">'+e.n+'</span>'+(e.t==="cardio"?'<span class="ed">'+w.reps+'</span>':'<span class="ed">'+w.sets+" x "+addTips(w.reps)+'</span>')+'<span class="bg '+tB(e.t)+'" style="font-size:10px">'+(e.p==="Cardio"?"Cardio":e.p)+'</span>'+restStr+'<span class="dgrip" data-di="'+i+'" ontouchstart="tds2(event,'+i+')" ontouchmove="tdm2(event)" ontouchend="tde2(event)" onmousedown="mds2(event,'+i+')">⠿</span><button class="sbtn" onclick="editEx('+i+')">Edit</button>'+(SWAP[w.exId]?'<button class="sbtn" onclick="cDay(cD).exercises['+i+'].exId=SWAP['+w.exId+'];sv();rView()">Swap</button>':'')+'<button class="dbtn" onclick="cDay(cD).exercises.splice('+i+',1);sv();rView()">Del</button></div>';
 const nextSS=d.exercises[i+1]?.ss||"";if(curSS&&nextSS!==curSS)row+='</div>';
 lastSS=curSS;return row}).join("");
 h+='</div>';
@@ -567,7 +604,8 @@ else if(cn<pn)olClass=" regress";
 
 h+='<div class="set-row">';
 h+='<span class="set-num">'+(s<9?"0":"")+(s+1)+'</span>';
-h+='<input class="set-input '+lbsClass+olClass+'" type="text" inputmode="decimal" placeholder="'+(prevLbs||"lbs")+'" value="'+showLbs+'" onfocus="onSetFocus(this,'+i+','+s+',\'lbs\',\''+prevLbs+'\')" onchange="onSetChange(this,'+i+','+s+',\'lbs\',\''+prevLbs+'\')" data-prev="'+prevLbs+'">';
+h+='<input class="set-input '+lbsClass+olClass+'" id="lbs_'+i+'_'+s+'" type="text" inputmode="decimal" placeholder="'+(prevLbs||"lbs")+'" value="'+showLbs+'" onfocus="onSetFocus(this,'+i+','+s+',\'lbs\',\''+prevLbs+'\')" onchange="onSetChange(this,'+i+','+s+',\'lbs\',\''+prevLbs+'\')" data-prev="'+prevLbs+'"'+(setData.bw?' disabled style="opacity:.4"':'')+'>'; 
+if(e.bw){const bwChecked=setData.bw||false;h+='<label class="bw-check" style="display:flex;align-items:center;gap:2px;font-size:10px;color:var(--w3);cursor:pointer;min-width:32px"><input type="checkbox" '+(bwChecked?'checked':'')+' onchange="toggleBW('+i+','+s+',this)"><span>BW</span></label>';}
 h+='<input class="set-input '+repsClass+'" type="text" inputmode="numeric" placeholder="'+target+'" value="'+showReps+'" onfocus="onSetFocus(this,'+i+','+s+',\'reps\',\''+prevReps+'\')" onchange="onSetChange(this,'+i+','+s+',\'reps\',\''+prevReps+'\')" data-prev="'+prevReps+'">';
 h+='<button class="set-check'+(isDone?" done":"")+'" onclick="completeSet('+i+','+s+','+restSec+',this)">✓</button>';
 h+='</div>';
@@ -880,6 +918,24 @@ if(ss)w.ss=ss;else delete w.ss;
 sv();clO();rView()}
 
 // Feature 3: Input focus/change handlers for styling
+
+function toggleBW(ei,si,cb){
+  const wk=wlk(cD);
+  if(!S.wlogs[wk])S.wlogs[wk]={};
+  if(!S.wlogs[wk][ei])S.wlogs[wk][ei]={};
+  if(!S.wlogs[wk][ei][si])S.wlogs[wk][ei][si]={};
+  S.wlogs[wk][ei][si].bw=cb.checked;
+  if(cb.checked){
+    S.wlogs[wk][ei][si].lbs="BW";
+    var lbsInput=document.getElementById("lbs_"+ei+"_"+si);
+    if(lbsInput){lbsInput.value="BW";lbsInput.disabled=true;lbsInput.style.opacity=".4"}
+  }else{
+    S.wlogs[wk][ei][si].lbs="";
+    var lbsInput=document.getElementById("lbs_"+ei+"_"+si);
+    if(lbsInput){lbsInput.value="";lbsInput.disabled=false;lbsInput.style.opacity="1"}
+  }
+  sv();
+}
 function onSetFocus(el,ei,si,field,prev){
   if(el.value===prev&&prev){el.value="";el.classList.remove("carried");el.classList.add("fresh")}
 }
@@ -1010,6 +1066,7 @@ window.cDT = cDT;
 window.cancelWorkout = cancelWorkout;
 window.clO = clO;
 window.completeSet = completeSet;
+window.toggleBW = toggleBW;
 window.copyInvite = copyInvite;
 window.showCopyWorkout = showCopyWorkout;
 window.doCopyWorkout = doCopyWorkout;
@@ -1018,6 +1075,11 @@ window.deleteProfile = deleteProfile;
 window.doGoogleLogin = doGoogleLogin;
 window.doW = doW;
 window.editEx = editEx;
+window.addWarmup = addWarmup;
+window.searchWarmup = searchWarmup;
+window.pickWarmup = pickWarmup;
+window.removeWarmup = removeWarmup;
+window.resetWarmups = resetWarmups;
 window.editSearch = editSearch;
 window.endWorkout = endWorkout;
 window.exportData = exportData;
