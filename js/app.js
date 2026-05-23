@@ -327,7 +327,7 @@ function showCopyWorkout(targetUid, targetName){
     }
   }
   sources+='</div>';
-  ov.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Copy workout to '+targetName+'</h3><button class="bs" onclick="clO()">Close</button></div><div style="font-size:12px;color:var(--w3);margin-bottom:8px">Select whose workout to copy:</div>'+sources+'</div></div>';
+  ov.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Copy workout to '+targetName+'</h3><button class="bs" onclick="clO()">Close</button></div><div style="font-size:12px;color:var(--w3);margin-bottom:8px">Select whose workout to copy:</div>'+sources+'</div></div>';
   ov.style.display="block";
 }
 
@@ -382,7 +382,7 @@ function copyInvite(){
 
 function addWarmup(){
   var ov=document.getElementById("ovl");
-  ov.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()"><div class="ovl-inner"><h3>Add warm-up exercise</h3><input class="fi" id="wuSearch" placeholder="Search exercises..." oninput="searchWarmup()" autocomplete="off"><div id="wuResults"></div><button class="bs" onclick="clO()" style="width:100%;margin-top:10px">Cancel</button></div></div>';
+  ov.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><h3>Add warm-up exercise</h3><input class="fi" id="wuSearch" placeholder="Search exercises..." oninput="searchWarmup()" autocomplete="off"><div id="wuResults"></div><button class="bs" onclick="clO()" style="width:100%;margin-top:10px">Cancel</button></div></div>';
   ov.style.display="block";
 }
 
@@ -426,8 +426,15 @@ if(d&&d.exercises&&!Array.isArray(d.exercises))d.exercises=Object.values(d.exerc
 if(d&&!d.exercises)d.exercises=[];const wu=getWU();const v=cV(cD);
 let h='<div class="dtabs">'+cDT(true)+'</div><div class="cd"><div class="wdh"><input value="'+d.label+'" onchange="cDay(cD).label=this.value;sv();rView()" placeholder="Day name">';
 if(days.length>1)h+='<button class="bs" style="color:var(--red);border-color:var(--red)" onclick="delDay()">Delete</button>';
-h+='</div><div style="font-size:12px;color:var(--w2);margin:8px 0 4px">Warm-up (auto-matched)</div>';
-h+=wu.map(w=>{const ex=aDB().find(e=>e.n===w.name);return '<div class="er"><span class="en">'+w.name+'</span><span class="bg '+(ex?tB(ex.t):"ba")+'" style="font-size:10px">'+(ex?ex.t:"mobility")+'</span><span class="wr">'+w.reason+'</span></div>'}).join("");
+h+='</div>';
+var customWU=d.warmups||null;
+var displayWU=customWU||wu;
+h+='<div style="font-size:12px;color:var(--w2);margin:8px 0 4px;display:flex;justify-content:space-between;align-items:center">Warm-up '+(customWU?'(custom)':'(auto-matched)')+'<div style="display:flex;gap:4px">'+(customWU?'<button class="bs" style="font-size:10px;padding:2px 6px;min-height:24px" onclick="resetWarmups()">Auto</button>':'')+'<button class="bs" style="font-size:10px;padding:2px 6px;min-height:24px" onclick="addWarmup()">+ Add</button></div></div>';
+if(customWU){
+h+=customWU.map((w,wi)=>'<div class="er"><span class="en" style="font-weight:400">'+(typeof w==="object"?w.name:gx(w)?.n||"?")+'</span><button class="dbtn" style="font-size:10px;padding:2px 6px" onclick="removeWarmup('+wi+')">✕</button></div>').join("");
+}else{
+h+=wu.map(w=>{var ex=aDB().find(e=>e.n===w.name);return '<div class="er"><span class="en">'+w.name+'</span><span class="bg '+(ex?tB(ex.t):"ba")+'" style="font-size:10px">'+(ex?ex.t:"mobility")+'</span><span class="wr">'+w.reason+'</span></div>'}).join("");
+}
 h+='<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px"><span style="font-size:12px;color:var(--w2)">Working sets &amp; cardio</span><button class="bs" onclick="showAdd(\'working\')">+ Add</button></div>';
 let lastSS="";h+=d.exercises.map((w,i)=>{const e=gx(w.exId);if(!e)return "";
 let row="";const curSS=w.ss||"";
@@ -453,7 +460,7 @@ el.innerHTML=h}
 
 function addNC(){
 const el=document.getElementById("ovl");
-el.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Add compliance item</h3><button class="bs" onclick="clO()">Close</button></div><label>Item name</label><input class="fi" id="ncN" placeholder="e.g. 8 hours sleep"><div style="margin-top:12px"><button class="bs bsa" onclick="svNC()" style="width:100%;padding:12px;min-height:48px">Save</button></div></div></div>';
+el.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Add compliance item</h3><button class="bs" onclick="clO()">Close</button></div><label>Item name</label><input class="fi" id="ncN" placeholder="e.g. 8 hours sleep"><div style="margin-top:12px"><button class="bs bsa" onclick="svNC()" style="width:100%;padding:12px;min-height:48px">Save</button></div></div></div>';
 el.style.display="block"}
 function svNC(){const v=(document.getElementById("ncN").value||"").trim();if(!v)return;S.ncItems.push(v);sv();clO();rCoachRec()}
 
@@ -800,7 +807,7 @@ function a2d(id){const e=gx(id);if(!e)return;cDay(cD).exercises.push(e.t==="card
 // ===== ADD OVERLAY =====
 function showAdd(ctx){
 const el=document.getElementById("ovl");const st=ctx==="library"?"compound,isolation,mobility,stretch,foam roll,cardio":"compound,isolation,cardio";
-let h='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>'+(ctx==="library"?"Create exercise":"Add to "+cDay(cD).label)+'</h3><button class="bs" onclick="clO()">Close</button></div>';
+let h='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>'+(ctx==="library"?"Create exercise":"Add to "+cDay(cD).label)+'</h3><button class="bs" onclick="clO()">Close</button></div>';
 if(ctx!=="library")h+='<label>Search existing</label><input class="fi" id="aSr" placeholder="Type name or muscle..." oninput="rAS(\''+st+"','"+ctx+'\')" autocomplete="off"><div id="aSrR"></div><div style="border-top:1px solid var(--sb);margin:12px 0;font-size:12px;color:var(--w3);padding-top:8px">Or create new:</div>';
 h+='<label>Name</label><input class="fi" id="mN" placeholder="e.g. Bulgarian split squat"><label>Type</label><div class="gp" id="mTG"><button class="gpi a" onclick="pkT(this,\'compound\')">Compound</button><button class="gpi" onclick="pkT(this,\'isolation\')">Isolation</button><button class="gpi" onclick="pkT(this,\'mobility\')">Mobility</button><button class="gpi" onclick="pkT(this,\'stretch\')">Stretch</button><button class="gpi" onclick="pkT(this,\'foam roll\')">Foam roll</button><button class="gpi" onclick="pkT(this,\'cardio\')">Cardio</button></div><input type="hidden" id="mT" value="compound"><label>Primary muscle</label><div class="gp" id="mPG">'+["Cardio",...MS].map((m,i)=>'<button class="bpp'+(i===1?" a":"")+'" onclick="pkP(this,\''+m.replace(/'/g,"\\'")+'\')">'+m+'</button>').join("")+'</div><input type="hidden" id="mP" value="Chest"><label>Secondary muscles</label><div class="gp" id="mS2" style="max-height:80px;overflow-y:auto">'+MS.map(m=>'<button class="bpp" onclick="this.classList.toggle(\'a\')">'+m+'</button>').join('')+'</div>';
 if(ctx!=="library")h+='<label>Sets x Reps</label><div style="display:flex;gap:8px;align-items:center"><input class="fis" id="mSt" type="text" inputmode="numeric" value="3"><span style="color:var(--wht);font-size:16px">x</span><input class="fis" id="mRp" type="text" value="10" style="width:80px"></div><label>Rest (seconds)</label><input class="fi" id="mRst" type="text" inputmode="numeric" value="90" placeholder="e.g. 90" style="width:100px"><label>Superset group (optional)</label><input class="fi" id="mSS" type="text" placeholder="e.g. E or F" style="width:100px">';
@@ -875,7 +882,7 @@ function mds2(e,i){_di=i;const r=e.target.closest(".er");if(r)r.classList.add("d
 function editEx(i){
 const w=cDay(cD).exercises[i];const e=gx(w.exId);if(!e)return;
 const el=document.getElementById("ovl");
-el.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Edit exercise</h3><button class="bs" onclick="clO()">Close</button></div>'+
+el.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Edit exercise</h3><button class="bs" onclick="clO()">Close</button></div>'+
 '<label>Exercise</label><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:600;font-size:14px;flex:1" id="edExName">'+e.n+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.p+'</span></div>'+
 '<input class="fi" id="edSearch" placeholder="Search to swap exercise..." oninput="editSearch('+i+')" autocomplete="off" style="margin-bottom:4px"><div id="edSearchRes"></div>'+
 '<input type="hidden" id="edExId" value="'+w.exId+'">'+
