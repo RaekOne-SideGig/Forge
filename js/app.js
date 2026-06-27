@@ -1217,19 +1217,19 @@ async function relinkCoach(){
     alert("Linked to "+S.coachName);
   }catch(e){alert("Error: "+e.message)}
 }
-var _libPage=0;
+window._libPage=0;
 function rLib(){
 const el=document.getElementById("cC");const f=S.ltf;
 const ts=["all","compound","isolation","mobility","stretch","foam roll","cardio"];
 var curQ=document.getElementById("libS")?.value||"";
-let h='<div class="cd"><div class="ch"><h3>Exercise Library</h3><button class="bs bsa" onclick="showAdd(\'library\')">+ New</button></div><input class="fi" placeholder="Search by name or muscle..." id="libS" value="'+curQ.replace(/"/g,"&quot;")+'" oninput="_libPage=0;rLib()" style="margin-bottom:8px"><div class="tts">'+ts.map(t=>'<button class="tt'+(f===t?' a':'')+'" onclick="S.ltf=\''+t+'\';_libPage=0;sv();rLib()">'+t+'</button>').join("")+'</div>';
+let h='<div class="cd"><div class="ch"><h3>Exercise Library</h3><button class="bs bsa" onclick="showAdd(\'library\')">+ New</button></div><input class="fi" placeholder="Search by name or muscle..." id="libS" value="'+curQ.replace(/"/g,"&quot;")+'" oninput="window._libPage=0;rLib()" style="margin-bottom:8px"><div class="tts">'+ts.map(t=>'<button class="tt'+(f===t?' a':'')+'" onclick="S.ltf=\''+t+'\';window._libPage=0;sv();rLib()">'+t+'</button>').join("")+'</div>';
 const q=curQ.toLowerCase();
 const all=aDB();
 const ls=all.filter(e=>{if(f!=="all"&&e.t!==f)return false;if(q)return(e.n+" "+e.p+" "+(e.s||[]).join(" ")).toLowerCase().includes(q);return true});
 var pageSize=50;
 var totalPages=Math.max(1,Math.ceil(ls.length/pageSize));
-if(_libPage>=totalPages)_libPage=totalPages-1;
-var start=_libPage*pageSize;
+if(window._libPage>=totalPages)window._libPage=totalPages-1;
+var start=window._libPage*pageSize;
 var page=ls.slice(start,start+pageSize);
 var customIds=new Set(S.customEx.map(function(e){return e.id}));
 h+='<div class="lc">'+ls.length+" exercises"+(S.customEx.length?' ('+S.customEx.length+' custom)':'')+'</div>';
@@ -1242,9 +1242,9 @@ h+=page.map(function(e){
 }).join("");
 if(totalPages>1){
   h+='<div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:10px">';
-  h+='<button class="bs" onclick="_libPage--;rLib()"'+(_libPage<=0?' disabled style="opacity:.3;pointer-events:none"':'')+'>← Prev</button>';
-  h+='<span style="font-size:12px;color:var(--w3)">'+(_libPage+1)+' / '+totalPages+'</span>';
-  h+='<button class="bs" onclick="_libPage++;rLib()"'+(_libPage>=totalPages-1?' disabled style="opacity:.3;pointer-events:none"':'')+'>Next →</button>';
+  h+='<button class="bs" onclick="window._libPage--;rLib()"'+(window._libPage<=0?' disabled style="opacity:.3;pointer-events:none"':'')+'>← Prev</button>';
+  h+='<span style="font-size:12px;color:var(--w3)">'+(window._libPage+1)+' / '+totalPages+'</span>';
+  h+='<button class="bs" onclick="window._libPage++;rLib()"'+(window._libPage>=totalPages-1?' disabled style="opacity:.3;pointer-events:none"':'')+'>Next →</button>';
   h+='</div>';
 }
 h+='</div>';el.innerHTML=h;
