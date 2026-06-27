@@ -1222,10 +1222,27 @@ const el=document.getElementById("cC");const f=S.ltf;
 const ts=["all","compound","isolation","mobility","stretch","foam roll","cardio"];
 let h='<div class="cd"><div class="ch"><h3>Exercise Library</h3><button class="bs bsa" onclick="showAdd(\'library\')">+ New</button></div><input class="fi" placeholder="Search by name or muscle..." id="libS" oninput="rLib()" style="margin-bottom:8px"><div class="tts">'+ts.map(t=>'<button class="tt'+(f===t?' a':'')+'" onclick="S.ltf=\''+t+'\';sv();rLib()">'+t+'</button>').join("")+'</div>';
 const q=(document.getElementById("libS")?.value||"").toLowerCase();
-const ls=aDB().filter(e=>{if(f!=="all"&&e.t!==f)return false;if(q)return(e.n+" "+e.p+" "+(e.s||[]).join(" ")).toLowerCase().includes(q);return true});
-h+='<div class="lc">'+ls.length+" of "+aDB().length+'</div>';
-h+=ls.slice(0,50).map(e=>'<div class="er"><span class="en">'+e.n+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.t+'</span><span class="ed">'+e.p+(e.s.length?" + "+e.s.join(", "):"")+'</span><button class="bs" onclick="a2d('+e.id+')">+ Add</button></div>').join("");
+const all=aDB();
+const ls=all.filter(e=>{if(f!=="all"&&e.t!==f)return false;if(q)return(e.n+" "+e.p+" "+(e.s||[]).join(" ")).toLowerCase().includes(q);return true});
+var showCount=window._libShowCount||50;
+h+='<div class="lc">'+ls.length+" of "+all.length+(S.customEx.length?' ('+S.customEx.length+' custom)':'')+'</div>';
+var customIds=new Set(S.customEx.map(function(e){return e.id}));
+h+=ls.slice(0,showCount).map(function(e){
+  var isCustom=customIds.has(e.id);
+  var row='<div class="er"><span class="en">'+e.n+(isCustom?'<span style="font-size:9px;color:var(--amb);margin-left:4px">custom</span>':'')+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.t+'</span><span class="ed">'+e.p+(e.s.length?" + "+e.s.join(", "):"")+'</span><button class="bs" onclick="a2d('+e.id+')">+ Add</button>';
+  if(isCustom)row+='<button class="dbtn" onclick="delCustomEx('+e.id+')">Del</button>';
+  row+='</div>';
+  return row;
+}).join("");
+if(ls.length>showCount){
+  h+='<button class="bs" onclick="window._libShowCount='+(showCount+50)+';rLib()" style="width:100%;margin-top:8px">Show more ('+Math.min(50,ls.length-showCount)+' more)</button>';
+}
 h+='</div>';el.innerHTML=h}
+function delCustomEx(id){
+  if(!confirm("Delete this custom exercise?"))return;
+  S.customEx=S.customEx.filter(function(e){return e.id!==id});
+  sv();rLib();
+}
 function a2d(id){const e=gx(id);if(!e)return;cDay(cD).exercises.push(e.t==="cardio"?{exId:id,sets:1,reps:"30 min"}:{exId:id,sets:e.t==="compound"?4:3,reps:e.t==="compound"?"6-8":"10-12",rest:e.r||60});sv();coachTab="arch";rView()}
 
 // ===== ADD OVERLAY =====
@@ -1538,6 +1555,7 @@ try{if(localStorage.getItem("forge_theme")==="light")document.documentElement.cl
 init();
 // Expose functions for onclick handlers
 window.a2d = a2d;
+window.delCustomEx = delCustomEx;
 window.addDay = addDay;
 window.addNC = addNC;
 window.cDT = cDT;
