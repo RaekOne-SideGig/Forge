@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Forge Heatmap Zone Calibrator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;color:#eee;font-family:system-ui;padding:12px;overflow:hidden;height:100vh}
+h1{font-size:16px;margin-bottom:8px;color:#00F2FF;display:flex;align-items:center;gap:12px}
+.layout{display:flex;height:calc(100vh - 80px);gap:12px}
+.left{display:flex;gap:12px;flex-shrink:0}
+.body-panel{text-align:center}
+.body-panel h3{margin-bottom:4px;font-size:12px;color:#aaa}
+.body-wrap{position:relative;width:220px;height:460px;border:1px solid #333;border-radius:6px;overflow:hidden;cursor:crosshair}
+.body-wrap img{width:100%;height:100%;display:block}
+.body-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.right{flex:1;overflow-y:auto;padding-right:4px;min-width:320px}
+.right h3{margin:10px 0 4px;font-size:13px;color:#00F2FF;position:sticky;top:0;background:#111;padding:4px 0;z-index:1}
+.zone-row{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:11px;padding:3px 6px;border-radius:3px;background:#1a1a1a;cursor:pointer}
+.zone-row:hover,.zone-row.active{background:#222;border-left:2px solid #00F2FF}
+.zone-row label{width:85px;font-weight:600;flex-shrink:0;font-size:11px}
+.zone-row input{width:52px;background:#222;border:1px solid #444;color:#eee;padding:2px 3px;border-radius:3px;font-size:10px;text-align:center}
+.zone-row input:focus{border-color:#00F2FF;outline:none}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:11px;color:#888}
+button.btn{padding:5px 14px;background:#00F2FF;color:#000;border:none;border-radius:5px;cursor:pointer;font-weight:600;font-size:11px}
+button.btn:hover{opacity:.85}
+button.btn.secondary{background:#333;color:#eee}
+.tab-bar{display:flex;gap:4px;margin-bottom:6px}
+.tab-btn{padding:4px 12px;background:#222;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit}
+.tab-btn.active{color:#00F2FF;border-color:#00F2FF;background:#0a1a1a}
+.hint{font-size:10px;color:#666;margin-left:8px}
+</style>
+</head>
+<body>
+<h1>Heatmap Calibrator <span class="hint">Drag zones to move · Scroll on zone to resize · Click row to highlight</span></h1>
+<div class="toolbar">
+<button class="btn" onclick="exportZones()">Export to Console</button>
+<button class="btn secondary" onclick="resetAll()">Reset to Defaults</button>
+<span>|</span>
+<div class="tab-bar">
+<button class="tab-btn active" id="tabAll" onclick="setVolMode('all')">All muscles</button>
+<button class="tab-btn" id="tabLow" onclick="setVolMode('low')">All Low</button>
+<button class="tab-btn" id="tabHigh" onclick="setVolMode('high')">All High</button>
+</div>
+</div>
+<div class="layout">
+<div class="left">
+<div class="body-panel">
+<h3>Front</h3>
+<div class="body-wrap" id="wrapF" data-side="front">
+<img src="assets/body-front.jpg">
+<canvas id="cvF"></canvas>
+</div>
+</div>
+<div class="body-panel">
+<h3>Back</h3>
+<div class="body-wrap" id="wrapB" data-side="back">
+<img src="assets/body-back.jpg">
+<canvas id="cvB"></canvas>
+</div>
+</div>
+</div>
+<div class="right">
+<h3>Front Zones</h3>
+<div id="fzC"></div>
+<h3>Back Zones</h3>
+<div id="bzC"></div>
+</div>
+</div>
+
+<script>
+var FZ=[
+{m:"Shoulders",cx:.33,cy:.24,rx:.07,ry:.032},
+{m:"Shoulders",cx:.68,cy:.24,rx:.07,ry:.032},
+{m:"Chest",cx:.5,cy:.265,rx:.165,ry:.04},
+{m:"Biceps",cx:.295,cy:.325,rx:.04,ry:.045},
+{m:"Biceps",cx:.72,cy:.325,rx:.04,ry:.045},
+{m:"Forearms",cx:.23,cy:.405,rx:.05,ry:.05},
+{m:"Forearms",cx:.775,cy:.405,rx:.05,ry:.045},
+{m:"Core",cx:.5,cy:.385,rx:.12,ry:.075},
+{m:"Hip flexors",cx:.405,cy:.45,rx:.035,ry:.018},
+{m:"Hip flexors",cx:.63,cy:.45,rx:.035,ry:.018},
+{m:"Quads",cx:.4,cy:.55,rx:.06,ry:.08},
+{m:"Quads",cx:.6,cy:.55,rx:.06,ry:.08},
+{m:"Adductors",cx:.47,cy:.53,rx:.025,ry:.05},
+{m:"Adductors",cx:.53,cy:.53,rx:.025,ry:.05},
+{m:"Abductors",cx:.35,cy:.48,rx:.025,ry:.025},
+{m:"Abductors",cx:.65,cy:.48,rx:.025,ry:.025},
+{m:"Calves",cx:.385,cy:.78,rx:.045,ry:.06},
+{m:"Calves",cx:.625,cy:.78,rx:.045,ry:.06}
+];
+var BZ=[
+{m:"Traps",cx:.50,cy:.14,rx:.09,ry:.022},
+{m:"Shoulders",cx:.30,cy:.17,rx:.06,ry:.022},
+{m:"Shoulders",cx:.70,cy:.17,rx:.06,ry:.022},
+{m:"Rear delts",cx:.25,cy:.18,rx:.035,ry:.018},
+{m:"Rear delts",cx:.75,cy:.18,rx:.035,ry:.018},
+{m:"Back",cx:.50,cy:.25,rx:.13,ry:.045},
+{m:"Lats",cx:.34,cy:.28,rx:.05,ry:.035},
+{m:"Lats",cx:.66,cy:.28,rx:.05,ry:.035},
+{m:"Triceps",cx:.20,cy:.26,rx:.03,ry:.045},
+{m:"Triceps",cx:.80,cy:.26,rx:.03,ry:.045},
+{m:"Glutes",cx:.43,cy:.41,rx:.07,ry:.035},
+{m:"Glutes",cx:.57,cy:.41,rx:.07,ry:.035},
+{m:"Hamstrings",cx:.40,cy:.55,rx:.06,ry:.08},
+{m:"Hamstrings",cx:.60,cy:.55,rx:.06,ry:.08},
+{m:"Calves",cx:.42,cy:.77,rx:.035,ry:.06},
+{m:"Calves",cx:.58,cy:.77,rx:.035,ry:.06}
+];
+
+var defaultFZ=JSON.parse(JSON.stringify(FZ));
+var defaultBZ=JSON.parse(JSON.stringify(BZ));
+var volMode="all";
+var activeZone=null; // {side:"front"|"back", idx:number}
+
+function getVol(m){
+  if(volMode==="low")return 3;
+  if(volMode==="high")return 14;
+  return 8;
+}
+function hC(s){return s>=12?"#ED4FBA":s>=6?"#7F77DD":s>=1?"#1D9E75":"#181820"}
+
+function setVolMode(mode){
+  volMode=mode;
+  document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("active")});
+  document.getElementById("tab"+mode.charAt(0).toUpperCase()+mode.slice(1)).classList.add("active");
+  paintAll();
+}
+
+function paintAll(){paint("cvF",FZ,"front");paint("cvB",BZ,"back")}
+
+function paint(cid,zones,side){
+  var c=document.getElementById(cid);if(!c)return;
+  var W=c.parentElement.offsetWidth;
+  var H=c.parentElement.offsetHeight;
+  c.width=W;c.height=H;
+  var ctx=c.getContext("2d");
+  ctx.clearRect(0,0,W,H);
+  zones.forEach(function(z,i){
+    var s=getVol(z.m);if(s<1)return;
+    var isActive=activeZone&&activeZone.side===side&&activeZone.idx===i;
+    ctx.globalAlpha=isActive?0.85:0.55;
+    ctx.fillStyle=hC(s);
+    ctx.beginPath();
+    ctx.ellipse(z.cx*W,z.cy*H,z.rx*W,z.ry*H,0,0,Math.PI*2);
+    ctx.fill();
+    if(isActive){
+      ctx.globalAlpha=1;ctx.strokeStyle="#00F2FF";ctx.lineWidth=2;
+      ctx.beginPath();ctx.ellipse(z.cx*W,z.cy*H,z.rx*W,z.ry*H,0,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    ctx.strokeStyle=isActive?"#fff":"rgba(255,255,255,0.4)";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(z.cx*W-4,z.cy*H);ctx.lineTo(z.cx*W+4,z.cy*H);
+    ctx.moveTo(z.cx*W,z.cy*H-4);ctx.lineTo(z.cx*W,z.cy*H+4);
+    ctx.stroke();
+    ctx.fillStyle=isActive?"#fff":"rgba(255,255,255,0.6)";
+    ctx.font=(isActive?"bold ":"")+"9px system-ui";
+    ctx.textAlign="center";
+    ctx.fillText(z.m,z.cx*W,z.cy*H-z.ry*H-3);
+  });
+}
+
+function buildControls(zones,cid,side){
+  var el=document.getElementById(cid);
+  var html="";
+  zones.forEach(function(z,i){
+    var isAct=activeZone&&activeZone.side===side&&activeZone.idx===i;
+    html+='<div class="zone-row'+(isAct?" active":"")+'" data-side="'+side+'" data-idx="'+i+'" onclick="selectZone(\''+side+'\','+i+')">';
+    html+='<label>'+z.m+'</label>';
+    ["cx","cy","rx","ry"].forEach(function(p){
+      html+=p+':<input type="number" step="0.005" value="'+z[p]+'" onchange="updZ(\''+side+'\','+i+',\''+p+'\',this.value)" onclick="event.stopPropagation()">';
+    });
+    html+='</div>';
+  });
+  el.innerHTML=html;
+}
+
+function selectZone(side,idx){
+  activeZone={side:side,idx:idx};
+  buildControls(FZ,"fzC","front");
+  buildControls(BZ,"bzC","back");
+  paintAll();
+  // Scroll row into view
+  var row=document.querySelector('.zone-row[data-side="'+side+'"][data-idx="'+idx+'"]');
+  if(row)row.scrollIntoView({block:"nearest"});
+}
+
+function updZ(side,idx,prop,val){
+  var zones=side==="front"?FZ:BZ;
+  zones[idx][prop]=parseFloat(val);
+  paintAll();
+}
+
+function rebuildAll(){
+  buildControls(FZ,"fzC","front");
+  buildControls(BZ,"bzC","back");
+  paintAll();
+}
+
+// Drag support
+var dragging=null;
+["wrapF","wrapB"].forEach(function(wid){
+  var wrap=document.getElementById(wid);
+  var side=wrap.dataset.side;
+
+  wrap.addEventListener("mousedown",function(e){
+    var rect=wrap.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)/rect.width;
+    var my=(e.clientY-rect.top)/rect.height;
+    var zones=side==="front"?FZ:BZ;
+    // Find closest zone center
+    var best=-1,bestD=Infinity;
+    zones.forEach(function(z,i){
+      var d=Math.sqrt(Math.pow(mx-z.cx,2)+Math.pow(my-z.cy,2));
+      // Check if click is within ellipse
+      var inEllipse=Math.pow((mx-z.cx)/z.rx,2)+Math.pow((my-z.cy)/z.ry,2)<=1;
+      if(inEllipse&&d<bestD){bestD=d;best=i}
+    });
+    if(best>=0){
+      dragging={side:side,idx:best,startX:mx,startY:my,origCx:zones[best].cx,origCy:zones[best].cy};
+      selectZone(side,best);
+      e.preventDefault();
+    }
+  });
+
+  wrap.addEventListener("mousemove",function(e){
+    if(!dragging||dragging.side!==side)return;
+    var rect=wrap.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)/rect.width;
+    var my=(e.clientY-rect.top)/rect.height;
+    var zones=side==="front"?FZ:BZ;
+    var z=zones[dragging.idx];
+    z.cx=Math.round((dragging.origCx+(mx-dragging.startX))*1000)/1000;
+    z.cy=Math.round((dragging.origCy+(my-dragging.startY))*1000)/1000;
+    paintAll();
+    // Update input values
+    var row=document.querySelector('.zone-row[data-side="'+side+'"][data-idx="'+dragging.idx+'"]');
+    if(row){
+      var inputs=row.querySelectorAll("input");
+      inputs[0].value=z.cx;inputs[1].value=z.cy;
+    }
+  });
+
+  wrap.addEventListener("mouseup",function(){dragging=null});
+  wrap.addEventListener("mouseleave",function(){dragging=null});
+
+  // Scroll to resize
+  wrap.addEventListener("wheel",function(e){
+    if(!activeZone||activeZone.side!==side)return;
+    e.preventDefault();
+    var zones=side==="front"?FZ:BZ;
+    var z=zones[activeZone.idx];
+    var delta=e.deltaY>0?-0.003:0.003;
+    if(e.shiftKey){
+      z.ry=Math.max(0.005,Math.round((z.ry+delta)*1000)/1000);
+    }else{
+      z.rx=Math.max(0.005,Math.round((z.rx+delta)*1000)/1000);
+      z.ry=Math.max(0.005,Math.round((z.ry+delta)*1000)/1000);
+    }
+    paintAll();
+    var row=document.querySelector('.zone-row[data-side="'+side+'"][data-idx="'+activeZone.idx+'"]');
+    if(row){
+      var inputs=row.querySelectorAll("input");
+      inputs[2].value=z.rx;inputs[3].value=z.ry;
+    }
+  },{passive:false});
+});
+
+function resetAll(){
+  FZ=JSON.parse(JSON.stringify(defaultFZ));
+  BZ=JSON.parse(JSON.stringify(defaultBZ));
+  activeZone=null;
+  rebuildAll();
+}
+
+function exportZones(){
+  function fmt(zones){
+    return "[\n"+zones.map(function(z){
+      return '{m:"'+z.m+'",cx:'+z.cx+',cy:'+z.cy+',rx:'+z.rx+',ry:'+z.ry+'}';
+    }).join(",\n")+"\n]";
+  }
+  console.log("=== FRONT ZONES (FZ) ===");
+  console.log("const FZ="+fmt(FZ)+";");
+  console.log("\n=== BACK ZONES (BZ) ===");
+  console.log("const BZ="+fmt(BZ)+";");
+  alert("Zone arrays logged to console (F12 > Console tab). Copy and send to me.");
+}
+
+rebuildAll();
+</script>
+</body>
+</html>

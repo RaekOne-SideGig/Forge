@@ -68,7 +68,7 @@ function sv() {
 }
 
 
-let cD=0,calY=2026,calM=4,athTab="exec",curMode="c",coachTab="arch";
+let cD=0,calY=2026,calM=4,athTab="exec",curMode="c",coachTab="home";
 
 // ===== AUTO-LOGIN: skip login if user exists =====
 
@@ -166,7 +166,7 @@ async function init(){
 
 function showRoleSelect(){
   const photo=S.photoURL?'<img src="'+S.photoURL+'" style="width:50px;height:50px;border-radius:50%;border:2px solid var(--cyan)">':'';
-  document.getElementById("app").innerHTML='<div class="lw">'+photo+'<h2>How will you use Forge?</h2><div style="display:grid;grid-template-columns:1fr;gap:12px;width:280px;margin-top:8px"><div class="role-card" onclick="pickRole(\'both\')"><h3>Both</h3><p>I coach myself — full access to build workouts and train</p></div><div class="role-card" onclick="pickRole(\'coach\')"><h3>Coach</h3><p>I build programs for my athletes</p></div><div class="role-card" onclick="pickRole(\'athlete\')"><h3>Athlete</h3><p>My coach builds my program — I log my training</p></div></div></div>';
+  document.getElementById("app").innerHTML='<div class="lw">'+photo+'<h2>How will you use Forge?</h2><div style="display:grid;grid-template-columns:1fr;gap:12px;width:300px;margin-top:8px"><div class="role-card" onclick="pickRole(\'both\')"><h3>Both</h3><p>Build your own programs and log your training. Full access to the Architect, Exercise Library, Dashboard, and workout logging.</p></div><div class="role-card" onclick="pickRole(\'coach\')"><h3>Coach</h3><p>Design programs for your athletes, monitor compliance, and track their progress. Share your invite code to link athletes.</p></div><div class="role-card" onclick="pickRole(\'athlete\')"><h3>Athlete</h3><p>Follow the program your coach assigns. Log sets, track progress, and complete daily recovery check-ins.</p></div></div></div>';
 }
 
 function pickRole(r){
@@ -176,11 +176,42 @@ function pickRole(r){
   }
   sv();
   if(r==="athlete"){showLinkCoach();return}
-  renderApp();
+  showOnboarding(r);
+}
+
+function showOnboarding(role){
+  var cards=[];
+  if(role==="athlete"){
+    cards=[
+      {icon:"🔗",title:"Link to your coach",desc:"Enter your coach's invite code in the Recovery tab to link up and receive your program."},
+      {icon:"🏋️",title:"Start your workout",desc:"Go to the Workout tab, pick your day, and hit Start. Log your weight and reps for each set."},
+      {icon:"📊",title:"Track your progress",desc:"Check the Dashboard for charts showing your lifts over time. Complete daily Recovery check-ins."}
+    ];
+  }else if(role==="coach"){
+    cards=[
+      {icon:"📤",title:"Share your invite code",desc:"Go to My Athletes and share your code. Athletes enter it to link to you."},
+      {icon:"🏗️",title:"Build programs",desc:"Use the Architect tab to create workout days, add exercises, and set reps/sets for each athlete."},
+      {icon:"👁️",title:"Monitor progress",desc:"Check the Dashboard for each athlete's progression charts, volume trends, and compliance."}
+    ];
+  }else{
+    cards=[
+      {icon:"🏗️",title:"Build your program",desc:"Use the Architect tab to create workout days and add exercises with sets, reps, and rest times."},
+      {icon:"🏋️",title:"Log your training",desc:"Switch to Athlete mode to start workouts. Log weight and reps — Forge tracks progressive overload."},
+      {icon:"📤",title:"Coach athletes",desc:"Share your invite code with athletes. Switch to Coach mode to build their programs and monitor progress."}
+    ];
+  }
+  var h='<div class="lw" style="gap:12px;padding:20px"><h2>Getting started</h2><div style="display:flex;flex-direction:column;gap:10px;width:300px;max-width:90vw">';
+  cards.forEach(function(c,i){
+    h+='<div style="background:var(--ob3);border:1px solid var(--sb);border-radius:12px;padding:16px;display:flex;gap:12px;align-items:flex-start">';
+    h+='<span style="font-size:24px;flex-shrink:0">'+c.icon+'</span>';
+    h+='<div><div style="font-weight:600;font-size:14px;margin-bottom:4px">'+c.title+'</div><div style="font-size:12px;color:var(--w3);line-height:1.4">'+c.desc+'</div></div></div>';
+  });
+  h+='<button class="lb" onclick="renderApp()" style="margin-top:8px;width:100%">Let\'s go</button></div></div>';
+  document.getElementById("app").innerHTML=h;
 }
 
 function showLinkCoach(){
-  document.getElementById("app").innerHTML='<div class="lw"><h2>Link to your coach</h2><div style="font-size:13px;color:var(--w3);margin-bottom:8px;text-align:center">Enter the invite code your coach gave you, or skip to train solo</div><input class="li" id="invCode" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')linkCoach()"><button class="lb" onclick="linkCoach()">Link to coach</button><button style="background:none;border:none;color:var(--w3);cursor:pointer;font-size:13px;margin-top:12px;font-family:inherit" onclick="S.role=\'both\';if(!S.inviteCode)S.inviteCode=genInviteCode(S);sv();setTimeout(()=>renderApp(),100)">Skip — I\'ll coach myself</button></div>';
+  document.getElementById("app").innerHTML='<div class="lw"><h2>Link to your coach</h2><div style="font-size:13px;color:var(--w3);margin-bottom:8px;text-align:center">Enter the invite code your coach gave you, or skip to train solo</div><input class="li" id="invCode" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')linkCoach()"><button class="lb" onclick="linkCoach()">Link to coach</button><button style="background:none;border:none;color:var(--w3);cursor:pointer;font-size:13px;margin-top:12px;font-family:inherit" onclick="S.role=\'both\';if(!S.inviteCode)S.inviteCode=genInviteCode(S);sv();setTimeout(()=>showOnboarding(\'both\'),100)">Skip — I\'ll coach myself</button></div>';
 }
 
 async function linkCoach(){
@@ -197,7 +228,7 @@ async function linkCoach(){
     }
     sv();
     // Small delay to ensure DOM is ready after sv triggers
-    setTimeout(()=>renderApp(),100);
+    setTimeout(()=>showOnboarding(S.role),100);
   }catch(e){alert("Error linking: "+e.message)}
 }
 function showLogin(){
@@ -258,7 +289,7 @@ function saveActiveData(){
   }
 }
 function renderApp(){
-document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw" id="modeButtons"></div></div><div class="ctx" id="ctxBar">'+(S.photoURL?'<img class="user-avatar" src="'+S.photoURL+'">':'')+'<span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><span class="sync-bar" style="border:none;padding:0;margin:0;background:none"><span class="dot off" id="syncDot"></span><span id="syncTxt" style="font-size:10px">Syncing</span></span><button class="lo" onclick="logout()">Logout</button><button class="del-btn" onclick="deleteProfile()">Delete</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';
+document.getElementById("app").innerHTML='<div class="top"><h1><img src="'+AT+'"> Forge</h1><div class="psw" id="modeButtons"></div></div><div class="ctx" id="ctxBar">'+(S.photoURL?'<img class="user-avatar" src="'+S.photoURL+'">':'')+'<span>'+S.user+'</span><span id="ctxWt">'+S.weight+' lbs</span><span class="sync-bar" style="border:none;padding:0;margin:0;background:none"><span class="dot off" id="syncDot"></span><span id="syncTxt" style="font-size:10px">Syncing</span></span><button class="lo" onclick="toggleTheme()" id="themeBtn" style="font-size:14px" title="Toggle light/dark mode">'+(document.documentElement.classList.contains("light")?"☀️":"🌙")+'</button><button class="lo" onclick="logout()">Logout</button><button class="del-btn" onclick="deleteProfile()">Delete</button></div><div id="mainV"></div><div id="ovl" style="display:none"></div>';
 // Set mode buttons based on role
 const modeEl=document.getElementById("modeButtons");
 if(!modeEl){console.warn("modeButtons not found");return}
@@ -284,13 +315,65 @@ function rView(){if(curMode==="c")rCoachView();else rAthView()}
 
 function rCoachView(){
 const el=document.getElementById("mainV");
-let ctabs='<div class="tabs"><button class="tab'+(coachTab==="arch"?" a":"")+'" onclick="coachTab=\'arch\';rCoachView()">Architect</button><button class="tab'+(coachTab==="lib"?" a":"")+'" onclick="coachTab=\'lib\';rCoachView()">Exercise Library</button><button class="tab'+(coachTab==="rec"?" a":"")+'" onclick="coachTab=\'rec\';rCoachView()">Recovery</button><button class="tab'+(coachTab==="dash"?" a":"")+'" onclick="coachTab=\'dash\';rCoachView()">Dashboard</button>';
+let ctabs='<div class="tabs"><button class="tab'+(coachTab==="home"?" a":"")+'" onclick="coachTab=\'home\';rCoachView()">Home</button><button class="tab'+(coachTab==="arch"?" a":"")+'" onclick="coachTab=\'arch\';rCoachView()">Architect</button><button class="tab'+(coachTab==="lib"?" a":"")+'" onclick="coachTab=\'lib\';rCoachView()">Exercise Library</button><button class="tab'+(coachTab==="rec"?" a":"")+'" onclick="coachTab=\'rec\';rCoachView()">Recovery</button><button class="tab'+(coachTab==="dash"?" a":"")+'" onclick="coachTab=\'dash\';rCoachView()">Dashboard</button>';
 if(S.role==="coach"||S.role==="both")ctabs+='<button class="tab'+(coachTab==="team"?" a":"")+'" onclick="selectedAthlete=null;athleteData=null;coachTab=\'team\';rCoachView()">My Athletes</button>';
 ctabs+='</div>';
 let editLabel=selectedAthlete?coachAthletes.find(a=>a.uid===selectedAthlete)?.name||"Athlete":"My Program";
 let topBar=(S.role==="coach"||S.role==="both")?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:var(--ob3);border:1px solid var(--sb);border-radius:8px;font-size:13px"><span style="color:var(--w3)">Editing:</span><span style="color:var(--cyan);font-weight:600">'+editLabel+'</span>'+(selectedAthlete?'<button class="bs" style="margin-left:auto;font-size:11px;padding:3px 8px;min-height:28px" onclick="selectedAthlete=null;athleteData=null;rView()">Back to mine</button>':'')+'</div>':'';
 el.innerHTML=ctabs+topBar+'<div id="cC"></div>';
-if(coachTab==="team"){rTeam()}else if(coachTab==="arch")rArch();else if(coachTab==="lib")rLib();else if(coachTab==="rec")rCoachRec();else rCoachDash()}
+if(coachTab==="home"){rCoachHome()}else if(coachTab==="team"){rTeam()}else if(coachTab==="arch")rArch();else if(coachTab==="lib")rLib();else if(coachTab==="rec")rCoachRec();else rCoachDash()}
+
+async function rCoachHome(){
+var el=document.getElementById("cC");if(!el)return;
+var h='<div class="cd"><div class="ch"><h3>Coach Dashboard</h3><span style="font-size:11px;color:var(--w3)">'+coachAthletes.length+' athlete'+(coachAthletes.length!==1?"s":"")+'</span></div>';
+if(coachAthletes.length===0){
+h+='<div style="text-align:center;padding:20px;color:var(--w3)"><div style="font-size:13px">No athletes linked yet</div><div style="font-size:12px;margin-top:4px">Go to My Athletes to share your invite code</div></div>';
+}else{
+h+='<div style="font-size:12px;color:var(--w3);margin-bottom:10px">Athlete activity overview</div>';
+// Load each athlete's latest data
+for(var ai=0;ai<coachAthletes.length;ai++){
+  var a=coachAthletes[ai];
+  h+='<div class="athlete-home-card" id="ahc_'+ai+'" style="background:var(--ob);border:1px solid var(--sb);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer" onclick="selectAthlete(\x27'+a.uid+'\x27)">';
+  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+  h+='<span style="font-weight:600;font-size:14px;flex:1">'+(a.name||"Athlete")+'</span>';
+  h+='<span class="bg ba" style="font-size:10px" id="ahcStatus_'+ai+'">Loading...</span>';
+  h+='</div>';
+  h+='<div style="font-size:11px;color:var(--w3)" id="ahcDetail_'+ai+'">Checking activity...</div>';
+  h+='</div>';
+}
+}
+h+='</div>';
+el.innerHTML=h;
+
+// Async: load each athlete's log to show status
+for(var ai=0;ai<coachAthletes.length;ai++){
+  (function(idx,uid){
+    fbDb.ref("users/"+uid+"/log").limitToLast(5).once("value").then(function(snap){
+      var log=snap.val();var entries=log?Object.values(log):[];
+      var statusEl=document.getElementById("ahcStatus_"+idx);
+      var detailEl=document.getElementById("ahcDetail_"+idx);
+      if(!statusEl||!detailEl)return;
+      if(entries.length===0){
+        statusEl.textContent="No activity";statusEl.className="bg bt";statusEl.style.fontSize="10px";
+        detailEl.textContent="No workouts logged yet";
+      }else{
+        var last=entries[entries.length-1];
+        var lastDate=last.date||"";
+        var today=new Date();var ld=new Date(lastDate);
+        var diffDays=Math.floor((today-ld)/(1000*60*60*24));
+        if(diffDays<=1){
+          statusEl.textContent="Active today";statusEl.className="bg bb";statusEl.style.fontSize="10px";
+        }else if(diffDays<=3){
+          statusEl.textContent=diffDays+"d ago";statusEl.className="bg ba";statusEl.style.fontSize="10px";
+        }else{
+          statusEl.textContent=diffDays+"d inactive";statusEl.className="bg bt";statusEl.style.fontSize="10px";statusEl.style.background="var(--red)";statusEl.style.color="#fff";
+        }
+        detailEl.textContent="Last: "+(last.label||"Workout")+" on "+lastDate+" ("+entries.length+" total)";
+      }
+    }).catch(function(){});
+  })(ai,coachAthletes[ai].uid);
+}
+}
 
 function rTeam(){
 var el=document.getElementById("cC");if(!el)return;
@@ -328,7 +411,7 @@ function showCopyWorkout(targetUid, targetName){
     }
   }
   sources+='</div>';
-  ov.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Copy workout to '+targetName+'</h3><button class="bs" onclick="clO()">Close</button></div><div style="font-size:12px;color:var(--w3);margin-bottom:8px">Select whose workout to copy:</div>'+sources+'</div></div>';
+  ov.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Copy workout to '+targetName+'</h3><button class="bs" onclick="clO()">Close</button></div><div style="font-size:12px;color:var(--w3);margin-bottom:8px">Select whose workout to copy:</div>'+sources+'</div></div>';
   ov.style.display="block";
 }
 
@@ -383,7 +466,7 @@ function copyInvite(){
 
 function addWarmup(){
   var ov=document.getElementById("ovl");
-  ov.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><h3>Add warm-up exercise</h3><input class="fi" id="wuSearch" placeholder="Search exercises..." oninput="searchWarmup()" autocomplete="off"><div id="wuResults"></div><button class="bs" onclick="clO()" style="width:100%;margin-top:10px">Cancel</button></div></div>';
+  ov.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><h3>Add warm-up exercise</h3><input class="fi" id="wuSearch" placeholder="Search exercises..." oninput="searchWarmup()" autocomplete="off"><div id="wuResults"></div><button class="bs" onclick="clO()" style="width:100%;margin-top:10px">Cancel</button></div></div>';
   ov.style.display="block";
 }
 
@@ -424,7 +507,7 @@ function editWarmup(wi){
   if(!d.warmups)return;
   var w=d.warmups[wi];
   var ov=document.getElementById("ovl");
-  ov.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><h3>Edit warm-up</h3><div style="font-weight:600;margin-bottom:8px">'+(w.name||"Exercise")+'</div><input class="fi" id="wuEditSearch" placeholder="Search to swap..." oninput="searchEditWarmup('+wi+')" autocomplete="off"><div id="wuEditResults"></div><button class="bs" onclick="clO()" style="width:100%;margin-top:10px">Cancel</button></div></div>';
+  ov.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><h3>Edit warm-up</h3><div style="font-weight:600;margin-bottom:8px">'+(w.name||"Exercise")+'</div><input class="fi" id="wuEditSearch" placeholder="Search to swap..." oninput="searchEditWarmup('+wi+')" autocomplete="off"><div id="wuEditResults"></div><button class="bs" onclick="clO()" style="width:100%;margin-top:10px">Cancel</button></div></div>';
   ov.style.display="block";
 }
 
@@ -464,6 +547,7 @@ if(d&&!d.exercises)d.exercises=[];const wu=getWU();const v=cV(cD);
 let h='<div class="dtabs">'+cDT(true)+'</div><div class="cd"><div class="wdh"><input value="'+d.label+'" onchange="cDay(cD).label=this.value;sv();rView()" placeholder="Day name">';
 if(days.length>1)h+='<button class="bs" style="color:var(--red);border-color:var(--red)" onclick="delDay()">Delete</button>';
 h+='</div>';
+h+='<div style="margin:6px 0 8px"><input class="fi" value="'+(d.coachNote||"")+'" onchange="cDay(cD).coachNote=this.value;sv()" placeholder="Coach note for this day (visible to athlete)" style="font-size:12px;font-style:italic"></div>';
 var customWU=d.warmups||null;
 var displayWU=customWU||wu;
 h+='<div style="font-size:12px;color:var(--w2);margin:8px 0 4px;display:flex;justify-content:space-between;align-items:center">Warm-up '+(customWU?'(custom)':'(auto-matched)')+'<div style="display:flex;gap:4px">'+(customWU?'<button class="bs" style="font-size:10px;padding:2px 6px;min-height:24px" onclick="resetWarmups()">Auto</button>':'')+'<button class="bs" style="font-size:10px;padding:2px 6px;min-height:24px" onclick="addWarmup()">+ Add</button></div></div>';
@@ -478,6 +562,7 @@ let row="";const curSS=w.ss||"";
 if(curSS&&curSS!==lastSS)row+='<div class="ss-group"><div class="ss-label">Superset '+curSS+'</div>';
 const restStr=w.rest!==undefined&&w.rest>0?' <span class="wr">Rest: '+(w.rest>=60?Math.floor(w.rest/60)+":"+(w.rest%60<10?"0":"")+w.rest%60:w.rest+"s")+'</span>':"";
 row+='<div class="er" data-di="'+i+'"><span class="en">'+e.n+'</span>'+(e.t==="cardio"?'<span class="ed">'+w.reps+'</span>':'<span class="ed">'+w.sets+" x "+addTips(w.reps)+'</span>')+'<span class="bg '+tB(e.t)+'" style="font-size:10px">'+(e.p==="Cardio"?"Cardio":e.p)+'</span>'+restStr+'<span class="dgrip" data-di="'+i+'" ontouchstart="tds2(event,'+i+')" ontouchmove="tdm2(event)" ontouchend="tde2(event)" onmousedown="mds2(event,'+i+')">⠿</span><button class="sbtn" onclick="editEx('+i+')">Edit</button>'+(SWAP[w.exId]?'<button class="sbtn" onclick="cDay(cD).exercises['+i+'].exId=SWAP['+w.exId+'];sv();rView()">Swap</button>':'')+'<button class="dbtn" onclick="cDay(cD).exercises.splice('+i+',1);sv();rView()">Del</button></div>';
+if(w.coachNote)row+='<div style="font-size:10px;color:var(--amb);font-style:italic;padding:2px 8px;margin-top:-6px;margin-bottom:4px">📝 '+w.coachNote+'</div>';
 const nextSS=d.exercises[i+1]?.ss||"";if(curSS&&nextSS!==curSS)row+='</div>';
 lastSS=curSS;return row}).join("");
 h+='</div>';
@@ -497,7 +582,7 @@ el.innerHTML=h}
 
 function addNC(){
 const el=document.getElementById("ovl");
-el.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Add compliance item</h3><button class="bs" onclick="clO()">Close</button></div><label>Item name</label><input class="fi" id="ncN" placeholder="e.g. 8 hours sleep"><div style="margin-top:12px"><button class="bs bsa" onclick="svNC()" style="width:100%;padding:12px;min-height:48px">Save</button></div></div></div>';
+el.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Add compliance item</h3><button class="bs" onclick="clO()">Close</button></div><label>Item name</label><input class="fi" id="ncN" placeholder="e.g. 8 hours sleep"><div style="margin-top:12px"><button class="bs bsa" onclick="svNC()" style="width:100%;padding:12px;min-height:48px">Save</button></div></div></div>';
 el.style.display="block"}
 function svNC(){const v=(document.getElementById("ncN").value||"").trim();if(!v)return;S.ncItems.push(v);sv();clO();rCoachRec()}
 
@@ -530,8 +615,46 @@ function renderCoachCalendar(log, days){
   return h;
 }
 
-const FZ=[{m:"Shoulders",x:.13,y:.14,w:.16,h:.06},{m:"Shoulders",x:.71,y:.14,w:.16,h:.06},{m:"Chest",x:.25,y:.16,w:.50,h:.14},{m:"Core",x:.30,y:.32,w:.40,h:.14},{m:"Biceps",x:.05,y:.20,w:.14,h:.16},{m:"Biceps",x:.81,y:.20,w:.14,h:.16},{m:"Forearms",x:.02,y:.37,w:.12,h:.18},{m:"Forearms",x:.86,y:.37,w:.12,h:.18},{m:"Hip flexors",x:.30,y:.44,w:.12,h:.06},{m:"Hip flexors",x:.58,y:.44,w:.12,h:.06},{m:"Adductors",x:.38,y:.52,w:.10,h:.14},{m:"Adductors",x:.52,y:.52,w:.10,h:.14},{m:"Abductors",x:.18,y:.46,w:.08,h:.10},{m:"Abductors",x:.74,y:.46,w:.08,h:.10},{m:"Quads",x:.22,y:.48,w:.22,h:.22},{m:"Quads",x:.56,y:.48,w:.22,h:.22},{m:"Calves",x:.24,y:.72,w:.18,h:.18},{m:"Calves",x:.58,y:.72,w:.18,h:.18}];
-const BZ=[{m:"Traps",x:.30,y:.12,w:.40,h:.06},{m:"Shoulders",x:.10,y:.14,w:.16,h:.06},{m:"Shoulders",x:.74,y:.14,w:.16,h:.06},{m:"Back",x:.25,y:.18,w:.50,h:.14},{m:"Lats",x:.20,y:.24,w:.15,h:.10},{m:"Lats",x:.65,y:.24,w:.15,h:.10},{m:"Triceps",x:.04,y:.20,w:.14,h:.16},{m:"Triceps",x:.82,y:.20,w:.14,h:.16},{m:"Glutes",x:.28,y:.35,w:.44,h:.10},{m:"Hamstrings",x:.22,y:.48,w:.22,h:.22},{m:"Hamstrings",x:.56,y:.48,w:.22,h:.22},{m:"Calves",x:.24,y:.72,w:.18,h:.18},{m:"Calves",x:.58,y:.72,w:.18,h:.18},{m:"Rear delts",x:.12,y:.14,w:.12,h:.05},{m:"Rear delts",x:.76,y:.14,w:.12,h:.05}];
+// Heatmap zones: cx,cy as proportion of 140x290 canvas, rx,ry as proportion radii
+// Calibrated via heatmap-test.html tool
+const FZ=[
+{m:"Shoulders",cx:.33,cy:.24,rx:.07,ry:.032},
+{m:"Shoulders",cx:.68,cy:.24,rx:.07,ry:.032},
+{m:"Chest",cx:.5,cy:.265,rx:.165,ry:.04},
+{m:"Biceps",cx:.295,cy:.325,rx:.04,ry:.045},
+{m:"Biceps",cx:.72,cy:.325,rx:.04,ry:.045},
+{m:"Forearms",cx:.23,cy:.405,rx:.05,ry:.05},
+{m:"Forearms",cx:.775,cy:.405,rx:.05,ry:.045},
+{m:"Core",cx:.5,cy:.385,rx:.12,ry:.075},
+{m:"Hip flexors",cx:.405,cy:.45,rx:.035,ry:.018},
+{m:"Hip flexors",cx:.63,cy:.45,rx:.035,ry:.018},
+{m:"Quads",cx:.4,cy:.55,rx:.06,ry:.08},
+{m:"Quads",cx:.6,cy:.55,rx:.06,ry:.08},
+{m:"Adductors",cx:.47,cy:.53,rx:.025,ry:.05},
+{m:"Adductors",cx:.53,cy:.53,rx:.025,ry:.05},
+{m:"Abductors",cx:.35,cy:.48,rx:.025,ry:.025},
+{m:"Abductors",cx:.65,cy:.48,rx:.025,ry:.025},
+{m:"Calves",cx:.385,cy:.78,rx:.045,ry:.06},
+{m:"Calves",cx:.625,cy:.78,rx:.045,ry:.06}
+];
+const BZ=[
+{m:"Traps",cx:.468,cy:.201,rx:.16,ry:.022},
+{m:"Shoulders",cx:.332,cy:.233,rx:.06,ry:.022},
+{m:"Shoulders",cx:.632,cy:.226,rx:.06,ry:.022},
+{m:"Rear delts",cx:.254,cy:.245,rx:.035,ry:.018},
+{m:"Rear delts",cx:.691,cy:.232,rx:.035,ry:.018},
+{m:"Back",cx:.5,cy:.27,rx:.13,ry:.045},
+{m:"Lats",cx:.345,cy:.326,rx:.05,ry:.065},
+{m:"Lats",cx:.592,cy:.332,rx:.05,ry:.065},
+{m:"Triceps",cx:.255,cy:.332,rx:.055,ry:.045},
+{m:"Triceps",cx:.705,cy:.343,rx:.055,ry:.045},
+{m:"Glutes",cx:.416,cy:.484,rx:.08,ry:.045},
+{m:"Glutes",cx:.556,cy:.48,rx:.08,ry:.045},
+{m:"Hamstrings",cx:.377,cy:.582,rx:.075,ry:.09},
+{m:"Hamstrings",cx:.586,cy:.574,rx:.075,ry:.09},
+{m:"Calves",cx:.361,cy:.77,rx:.07,ry:.08},
+{m:"Calves",cx:.611,cy:.766,rx:.07,ry:.08}
+];
 
 function paintCoachHeat(cid,front,vol){
   const c=document.getElementById(cid);if(!c)return;
@@ -543,7 +666,7 @@ function paintCoachHeat(cid,front,vol){
     const s=vol[z.m]||0;if(s<1)return;
     ctx.fillStyle=hC(s);
     ctx.beginPath();
-    ctx.ellipse(z.x*140+z.w*70,z.y*290+z.h*145,z.w*77,z.h*160,0,0,Math.PI*2);
+    ctx.ellipse(z.cx*140,z.cy*290,z.rx*140,z.ry*290,0,0,Math.PI*2);
     ctx.fill();
   });
 }
@@ -663,8 +786,105 @@ const el=document.getElementById("mainV");
 el.innerHTML='<div class="tabs"><button class="tab'+(athTab==="exec"?" a":"")+'" onclick="athTab=\'exec\';rAthView()">Workout</button><button class="tab'+(athTab==="dash"?" a":"")+'" onclick="athTab=\'dash\';rAthView()">Dashboard</button><button class="tab'+(athTab==="cal"?" a":"")+'" onclick="athTab=\'cal\';rAthView()">Calendar</button><button class="tab'+(athTab==="rec"?" a":"")+'" onclick="athTab=\'rec\';rAthView()">Recovery</button></div><div id="aC"></div>';
 if(athTab==="exec")rExec();else if(athTab==="dash")rDash();else if(athTab==="cal")rCal();else rRec()}
 
+// Track manually expanded exercises (overrides auto-collapse)
+let manualExpandEx=new Set();
+
+// PR detection: find all-time max weight for a given exercise ID
+function getExPR(exId){
+  var maxW=0;
+  S.log.forEach(function(lg){
+    if(!lg.weights)return;
+    // Find the exercise in the logged day
+    var days=S.days;
+    if(!days||!days[lg.dayIdx])return;
+    var dayExs=days[lg.dayIdx].exercises;
+    if(!dayExs)return;
+    dayExs.forEach(function(ex,ei){
+      if(ex.exId!==exId)return;
+      var raw=lg.weights[ei];
+      if(!raw||typeof raw!=="object")return;
+      Object.entries(raw).forEach(function(kv){
+        if(kv[0]==="_meta")return;
+        var s=kv[1];
+        if(s&&s.lbs){var n=parseFloat(s.lbs);if(!isNaN(n)&&n>maxW)maxW=n}
+      });
+    });
+  });
+  return maxW;
+}
+
+// Weekly summary data
+function getWeeklySummary(){
+  var now=new Date();
+  var weekStart=new Date(now);weekStart.setDate(now.getDate()-now.getDay());
+  weekStart.setHours(0,0,0,0);
+  var weekLogs=S.log.filter(function(lg){var d=new Date(lg.date);return d>=weekStart});
+  var totalVol=0;
+  weekLogs.forEach(function(lg){
+    if(!lg.weights)return;
+    Object.entries(lg.weights).forEach(function(kv){
+      if(kv[0]==="_meta")return;
+      var s=kv[1];
+      if(typeof s==="object"&&s!==null){
+        Object.values(s).forEach(function(v){
+          if(v&&v.lbs&&v.reps){
+            var w=parseFloat(v.lbs),r=parseInt(v.reps);
+            if(!isNaN(w)&&!isNaN(r)&&w<2000)totalVol+=w*r;
+          }
+        });
+      }
+    });
+  });
+  // Compliance streak
+  var streak=0;var d=new Date(now);
+  while(true){
+    var ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if(S.recLog[ds]!==undefined){streak++;d.setDate(d.getDate()-1)}
+    else break;
+  }
+  return {sessions:weekLogs.length,totalVol:totalVol,streak:streak};
+}
+
+function isExAllDone(wk,exIdx,sets){
+  var exId=cDay(cD).exercises[exIdx]?.exId;var key=exId?"ex_"+exId:exIdx;
+  if(!S.wlogs[wk]||!S.wlogs[wk][key])return false;
+  for(let s=0;s<sets;s++){
+    if(!S.wlogs[wk][key][s]||!S.wlogs[wk][key][s].done)return false;
+  }
+  return true;
+}
+
+function toggleExCollapse(idx){
+  if(manualExpandEx.has(idx))manualExpandEx.delete(idx);
+  else manualExpandEx.add(idx);
+  rExec();
+}
+
+function scrollToNextEx(){
+  var cards=document.querySelectorAll(".ex-card-wrap");
+  for(var i=0;i<cards.length;i++){
+    if(cards[i].dataset.done==="false"){
+      cards[i].scrollIntoView({behavior:"smooth",block:"center"});
+      return;
+    }
+  }
+}
+
 function rExec(){
-const el=document.getElementById("aC");const d=cDay(cD);const wu=getWU();const wk=wlk(cD);
+const el=document.getElementById("aC");const d=cDay(cD);
+// Empty state: no program
+if(!d||!d.exercises||d.exercises.length===0){
+var days=selectedAthlete&&athleteData?athleteData.days:S.days;
+if(!days||!days.length||!d){
+el.innerHTML='<div style="text-align:center;padding:40px 20px"><div style="font-size:40px;margin-bottom:12px">🏗️</div><div style="font-size:16px;font-weight:600;color:var(--wht);margin-bottom:8px">No program yet</div><div style="font-size:13px;color:var(--w3);line-height:1.5">'+(S.role==="athlete"?"Your coach hasn't assigned a program yet. Check back soon or ask them to set one up.":"Switch to Coach mode to build your program in the Architect tab.")+'</div></div>';
+return;
+}
+if(d.exercises.length===0){
+el.innerHTML='<div class="dtabs">'+cDT(false)+'</div><div style="text-align:center;padding:40px 20px"><div style="font-size:40px;margin-bottom:12px">📋</div><div style="font-size:16px;font-weight:600;color:var(--wht);margin-bottom:8px">No exercises on '+d.label+'</div><div style="font-size:13px;color:var(--w3);line-height:1.5">'+(S.role==="athlete"?"Your coach hasn't added exercises to this day yet.":"Switch to Coach mode and add exercises in the Architect tab.")+'</div></div>';
+return;
+}
+}
+const wu=getWU();const wk=wlk(cD);
 if(!S.wlogs[wk])S.wlogs[wk]={};
 if(!S.wlogs[wk]._meta)S.wlogs[wk]._meta={};
 const meta=S.wlogs[wk]._meta;
@@ -676,12 +896,27 @@ var avgDur=calcAvgDuration(cD);
 h+=(avgDur?'<div style="font-size:12px;color:var(--w3);text-align:center;margin-bottom:8px">Avg duration: '+avgDur+'</div>':'')+'<button class="start-workout-btn" onclick="startWorkout()">▶ Start '+d.label+'</button>';
 h+='<div class="cd">';
 }else{
+// Progress indicator
+var totalEx=d.exercises.length;
+var doneEx=0;
+d.exercises.forEach(function(w,i){if(isExAllDone(wk,i,w.sets))doneEx++});
+var pctDone=totalEx>0?Math.round(doneEx/totalEx*100):0;
+h+='<div class="workout-progress" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px"><span style="color:var(--w2)">'+doneEx+'/'+totalEx+' exercises done</span><span style="color:var(--cyan);font-weight:600">'+pctDone+'%</span></div><div style="height:4px;background:var(--sb);border-radius:2px;overflow:hidden"><div style="height:100%;background:var(--cyan);border-radius:2px;width:'+pctDone+'%;transition:width .3s"></div></div></div>';
 h+='<div class="workout-timer" id="wkTimer" style="display:flex;align-items:center;justify-content:center;gap:10px"><span id="wkTimeText">⏱ '+fmtElapsed(meta.startTime,meta.pausedTotal||0)+'</span>'+(!meta.paused?'<button class="bs" onclick="pauseWorkout()" style="padding:4px 12px;min-height:32px">Pause</button>':'<button class="bs" style="padding:4px 12px;min-height:32px;border-color:var(--cyan);color:var(--cyan)" onclick="resumeWorkout()">Resume</button>')+'<button class="bs" onclick="cancelWorkout()" style="padding:4px 12px;min-height:32px;border-color:var(--red);color:var(--red)">Cancel</button></div>';
 h+='<div class="cd">';
 }
 
 h+='<div style="font-size:14px;color:var(--wht);margin-bottom:8px;font-weight:700">Warm-up</div>';
-h+=wu.map(w=>'<div class="er"><span class="en" style="font-weight:400">'+w.name+'</span><span class="ed">2 x 10</span></div>').join("");
+// Day-level coach note
+if(d.coachNote){
+h+='<div style="font-size:12px;color:var(--amb);font-style:italic;padding:8px 10px;background:rgba(255,184,51,.08);border:1px solid rgba(255,184,51,.15);border-radius:8px;margin-bottom:10px">📝 '+d.coachNote+'</div>';
+}
+var displayWU=d.warmups||wu;
+h+=displayWU.map((w,wi)=>{
+var wName=typeof w==="object"?w.name:(w.name||w);
+var wuDone=S.wlogs[wk]&&S.wlogs[wk]["wu_"+wi]&&S.wlogs[wk]["wu_"+wi].done;
+return '<div class="er" style="display:flex;align-items:center;gap:8px"><button class="set-check'+(wuDone?" done":"")+'" onclick="toggleWarmupDone('+wi+',this)" style="flex-shrink:0">✓</button><span class="en" style="font-weight:400;flex:1">'+wName+'</span></div>';
+}).join("");
 
 h+='<div style="font-size:14px;color:var(--wht);margin:12px 0 8px;font-weight:700">Workout</div>';
 let lastSS="";
@@ -693,8 +928,21 @@ const restSec=w.rest!==undefined?w.rest:(e.r||0);
 const restStr=restSec>0?"Rest "+fmtRest(restSec):"";
 const repTargets=(w.reps||"").split(",").map(r=>r.trim());
 
+// Auto-collapse logic
+const allDone=started&&isExAllDone(wk,i,w.sets);
+const collapsed=started&&allDone&&!manualExpandEx.has(i);
+
+h+='<div class="ex-card-wrap" data-done="'+allDone+'" data-idx="'+i+'">';
+if(collapsed){
+h+='<div class="ex-card ex-collapsed" onclick="toggleExCollapse('+i+')" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 12px">';
+h+='<span style="color:var(--grn);font-size:16px">✓</span>';
+h+='<span class="ex-name" style="flex:1">'+e.n+'</span>';
+h+='<span style="font-size:11px;color:var(--w3)">tap to expand</span>';
+h+='</div>';
+}else{
 h+='<div class="ex-card">';
-h+='<div class="ex-head"><span class="ex-name">'+e.n+'</span>';
+h+='<div class="ex-head"'+(started&&allDone?' onclick="toggleExCollapse('+i+')" style="cursor:pointer"':'')+'><span class="ex-name">'+e.n+'</span>';
+if(started&&allDone)h+='<span style="color:var(--grn);font-size:14px;margin-right:4px">✓</span>';
 h+='<span class="bg '+tB(e.t)+'" style="font-size:10px">'+((e.t==="cardio")?"Cardio":e.p)+'</span></div>';
 h+='<div class="ex-pills">';
 if(e.t==="cardio"){h+='<span class="ex-pill">'+w.reps+'</span>';}
@@ -705,8 +953,14 @@ if(restStr)h+='<span class="ex-pill">'+restStr+'</span>';
 }
 h+='</div>';
 
+// Coach note
+if(w.coachNote){
+h+='<div style="font-size:11px;color:var(--amb);font-style:italic;padding:4px 8px;background:rgba(255,184,51,.08);border-radius:6px;margin:4px 0">📝 '+w.coachNote+'</div>';
+}
+
 if(isL(e.t)){
-const wts=S.wlogs[wk][i]||{};
+var exKey="ex_"+w.exId;
+const wts=S.wlogs[wk][exKey]||S.wlogs[wk][i]||{};
 const prevData=getPrevWts(cD,i);
 
 h+='<div style="display:flex;gap:8px;padding:4px 0;align-items:center"><span class="set-num"></span><span class="set-label" style="width:80px;text-align:center;font-size:11px;color:var(--w3)">lbs</span><span class="set-label" style="width:80px;text-align:center;font-size:11px;color:var(--w3)">Reps</span><span style="width:36px"></span></div>';
@@ -740,9 +994,9 @@ else if(cn<pn)olClass=" regress";
 
 h+='<div class="set-row">';
 h+='<span class="set-num">'+(s<9?"0":"")+(s+1)+'</span>';
-h+='<input class="set-input '+lbsClass+olClass+'" id="lbs_'+i+'_'+s+'" type="text" inputmode="decimal" placeholder="'+(prevLbs||"lbs")+'" value="'+showLbs+'" onfocus="onSetFocus(this,'+i+','+s+',\'lbs\',\''+prevLbs+'\')" onchange="onSetChange(this,'+i+','+s+',\'lbs\',\''+prevLbs+'\')" data-prev="'+prevLbs+'"'+(setData.bw?' disabled style="opacity:.4"':'')+'>'; 
+h+='<input class="set-input '+lbsClass+olClass+'" id="lbs_'+i+'_'+s+'" type="text" inputmode="decimal" placeholder="'+(prevLbs?"last: "+prevLbs:"lbs")+'" value="'+showLbs+'" onfocus="onSetFocus(this,'+i+','+s+',\'lbs\',\''+prevLbs+'\')" onchange="onSetChange(this,'+i+','+s+',\'lbs\',\''+prevLbs+'\')" data-prev="'+prevLbs+'"'+(setData.bw?' disabled style="opacity:.4"':'')+'>'; 
 if(e.bw){const bwChecked=setData.bw||false;h+='<label class="bw-check" style="display:flex;align-items:center;gap:2px;font-size:10px;color:var(--w3);cursor:pointer;min-width:32px"><input type="checkbox" '+(bwChecked?'checked':'')+' onchange="toggleBW('+i+','+s+',this)"><span>BW</span></label>';}
-h+='<input class="set-input '+repsClass+'" type="text" inputmode="numeric" placeholder="'+target+'" value="'+showReps+'" onfocus="onSetFocus(this,'+i+','+s+',\'reps\',\''+prevReps+'\')" onchange="onSetChange(this,'+i+','+s+',\'reps\',\''+prevReps+'\')" data-prev="'+prevReps+'">';
+h+='<input class="set-input '+repsClass+'" type="text" inputmode="numeric" placeholder="'+(prevReps?"last: "+prevReps:target||"reps")+'" value="'+showReps+'" onfocus="onSetFocus(this,'+i+','+s+',\'reps\',\''+prevReps+'\')" onchange="onSetChange(this,'+i+','+s+',\'reps\',\''+prevReps+'\')" data-prev="'+prevReps+'">';
 h+='<button class="set-check'+(isDone?" done":"")+'" onclick="completeSet('+i+','+s+','+restSec+',this)">✓</button>';
 h+='</div>';
 
@@ -753,6 +1007,13 @@ h+='<div class="overload-hint bad">↓ Below last session</div>';
 }else if(olClass===" progress"&&curLbs){
 h+='<div class="overload-hint good">✓ Progressive overload</div>';
 }
+// PR badge
+if(curLbs&&!isNaN(parseFloat(curLbs))){
+var prMax=getExPR(w.exId);
+if(parseFloat(curLbs)>prMax&&prMax>0){
+h+='<div class="pr-badge" style="display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#FFB833,#FF6B35);color:#000;font-weight:700;font-size:11px;padding:3px 8px;border-radius:6px;margin-top:2px">🏆 NEW PR!</div>';
+}
+}
 }
 
 if(prevData){
@@ -761,6 +1022,8 @@ if(prevStr)h+='<div class="ex-prev">Last session: '+prevStr+'</div>';
 }
 }
 h+='</div>';
+}
+h+='</div>';// close ex-card-wrap
 
 const nextSS=d.exercises[i+1]?.ss||"";
 if(curSS&&nextSS!==curSS)h+='</div>';
@@ -769,26 +1032,57 @@ lastSS=curSS;
 
 h+='</div>';
 if(started){
+// Sticky next exercise button (only if there are incomplete exercises)
+var hasIncomplete=d.exercises.some(function(w,i){return !isExAllDone(wk,i,w.sets)});
+if(hasIncomplete){
+h+='<button class="next-ex-btn" onclick="scrollToNextEx()" style="position:sticky;bottom:60px;width:100%;padding:10px;background:var(--ob3);border:1px solid var(--cyan);color:var(--cyan);border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;z-index:5;margin-bottom:4px">↓ Next exercise</button>';
+}
 h+='<button class="end-workout-btn" onclick="endWorkout()">⏹ End workout & save</button>';
 }
 el.innerHTML=h;
 if(started)startWkClock();
 }
 
-function logSet(ei,si,field,v){const wk=wlk(cD);if(!S.wlogs[wk])S.wlogs[wk]={};if(!S.wlogs[wk][ei])S.wlogs[wk][ei]={};if(!S.wlogs[wk][ei][si])S.wlogs[wk][ei][si]={};S.wlogs[wk][ei][si][field]=v;sv()}
-function toggleSetDone(ei,si,btn){const wk=wlk(cD);if(!S.wlogs[wk])S.wlogs[wk]={};if(!S.wlogs[wk][ei])S.wlogs[wk][ei]={};if(!S.wlogs[wk][ei][si])S.wlogs[wk][ei][si]={};S.wlogs[wk][ei][si].done=!S.wlogs[wk][ei][si].done;btn.classList.toggle("done");sv()}
-function getPrevWts(di,ei){const t=new Date();for(let d=1;d<60;d++){const dt=new Date(t);dt.setDate(dt.getDate()-d);const ds=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");const k=ds+"_"+di;if(S.wlogs[k]&&S.wlogs[k][ei]){const data=S.wlogs[k][ei];const clean={};Object.entries(data).forEach(([si,v])=>{if(si==="_meta")return;if(typeof v==="object"&&v!==null){clean[si]={lbs:String(v.lbs||""),reps:String(v.reps||"")}}else if(typeof v==="string"||typeof v==="number"){clean[si]={lbs:String(v),reps:""}}});if(Object.keys(clean).length>0)return clean}}return null}
+function logSet(ei,si,field,v){const wk=wlk(cD);if(!S.wlogs[wk])S.wlogs[wk]={};var exId=cDay(cD).exercises[ei]?.exId;var key=exId?"ex_"+exId:ei;if(!S.wlogs[wk][key])S.wlogs[wk][key]={};if(!S.wlogs[wk][key][si])S.wlogs[wk][key][si]={};S.wlogs[wk][key][si][field]=v;sv()}
+function toggleSetDone(ei,si,btn){const wk=wlk(cD);if(!S.wlogs[wk])S.wlogs[wk]={};var exId=cDay(cD).exercises[ei]?.exId;var key=exId?"ex_"+exId:ei;if(!S.wlogs[wk][key])S.wlogs[wk][key]={};if(!S.wlogs[wk][key][si])S.wlogs[wk][key][si]={};S.wlogs[wk][key][si].done=!S.wlogs[wk][key][si].done;btn.classList.toggle("done");sv()}
+function toggleWarmupDone(wi,btn){const wk=wlk(cD);if(!S.wlogs[wk])S.wlogs[wk]={};var key="wu_"+wi;if(!S.wlogs[wk][key])S.wlogs[wk][key]={};S.wlogs[wk][key].done=!S.wlogs[wk][key].done;btn.classList.toggle("done");sv()}
+function getPrevWts(di,ei){
+var exId=cDay(di).exercises[ei]?.exId;if(!exId)return null;
+var exKey="ex_"+exId;
+const t=new Date();for(let d=1;d<60;d++){const dt=new Date(t);dt.setDate(dt.getDate()-d);const ds=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");const k=ds+"_"+di;
+if(S.wlogs[k]){
+// Try exercise-ID key first, fall back to legacy index key
+var raw=S.wlogs[k][exKey]||S.wlogs[k][ei]||null;
+if(!raw)continue;
+const clean={};Object.entries(raw).forEach(([si,v])=>{if(si==="_meta")return;if(typeof v==="object"&&v!==null){clean[si]={lbs:String(v.lbs||""),reps:String(v.reps||"")}}else if(typeof v==="string"||typeof v==="number"){clean[si]={lbs:String(v),reps:""}}});if(Object.keys(clean).length>0)return clean}}return null}
 // markDone replaced by endWorkout
 
 function rDash(){
 const el=document.getElementById("aC");
+// Weekly summary
+var ws=getWeeklySummary();
+let h='<div class="cd"><div class="ch"><h3>This week</h3></div><div class="mg"><div class="mc"><div class="l">Sessions</div><div class="v">'+ws.sessions+'</div></div><div class="mc"><div class="l">Volume</div><div class="v">'+(ws.totalVol>=1000?(ws.totalVol/1000).toFixed(1)+"k":ws.totalVol)+' lbs</div></div><div class="mc"><div class="l">Compliance streak</div><div class="v">'+ws.streak+' day'+(ws.streak!==1?"s":"")+'</div></div></div></div>';
 const lifts=[];S.days.forEach((d,di)=>{d.exercises.forEach((w,ei)=>{const e=gx(w.exId);if(e&&isL(e.t))lifts.push({name:e.n,di,ei,label:d.label})})});
-let h='<div class="cd"><div class="ch"><h3>Exercise progression</h3></div><select class="fsel" id="dSel" onchange="rDCh()">';
+h+='<div class="cd"><div class="ch"><h3>Exercise progression</h3></div><select class="fsel" id="dSel" onchange="rDCh()">';
 lifts.forEach((l,i)=>h+='<option value="'+i+'">'+l.label+" — "+l.name+'</option>');
 h+='</select><div style="position:relative;width:100%;height:220px;margin-top:10px"><canvas id="dCh"></canvas></div></div>';
 h+='<div class="cd"><div class="ch"><h3>Volume load trend</h3></div><div style="position:relative;width:100%;height:200px"><canvas id="oCh"></canvas></div></div>';
 
-el.innerHTML=h;setTimeout(()=>{rDCh();rOCh()},100)}
+// Heatmap - volume per muscle across all days
+var athVol={};
+S.days.forEach(function(d){if(!d||!d.exercises)return;d.exercises.forEach(function(w){
+var e=gx(w.exId);if(!e||e.p==="Cardio")return;
+athVol[e.p]=(athVol[e.p]||0)+w.sets;
+(e.s||[]).forEach(function(s){if(s!=="Cardio")athVol[s]=(athVol[s]||0)+Math.max(1,Math.round(w.sets*0.75))});
+})});
+h+='<div class="cd"><div class="ch"><h3>Weekly load heat map</h3><span style="font-size:10px;color:var(--w3)">Based on programmed sets</span></div>';
+h+='<div style="display:flex;justify-content:center;gap:10px;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:3px;font-size:10px"><span style="width:10px;height:10px;border-radius:50%;background:#1D9E75;display:inline-block"></span>Low</span><span style="display:inline-flex;align-items:center;gap:3px;font-size:10px"><span style="width:10px;height:10px;border-radius:50%;background:#7F77DD;display:inline-block"></span>Mid</span><span style="display:inline-flex;align-items:center;gap:3px;font-size:10px"><span style="width:10px;height:10px;border-radius:50%;background:#ED4FBA;display:inline-block"></span>High</span></div>';
+h+='<div style="display:flex;justify-content:center;gap:20px;margin-top:10px;position:relative">';
+h+='<div style="text-align:center"><div style="position:relative;width:140px;height:290px"><img src="'+BF+'" style="width:140px;height:290px;border-radius:8px;mix-blend-mode:luminosity"><canvas id="cvAF" style="position:absolute;top:0;left:0;width:140px;height:290px;mix-blend-mode:color;opacity:.8"></canvas></div><div style="font-size:10px;color:var(--w3);margin-top:4px">Front</div></div>';
+h+='<div style="text-align:center"><div style="position:relative;width:140px;height:290px"><img src="'+BB+'" style="width:140px;height:290px;border-radius:8px;mix-blend-mode:luminosity"><canvas id="cvAB" style="position:absolute;top:0;left:0;width:140px;height:290px;mix-blend-mode:color;opacity:.8"></canvas></div><div style="font-size:10px;color:var(--w3);margin-top:4px">Back</div></div>';
+h+='</div></div>';
+
+el.innerHTML=h;setTimeout(()=>{rDCh();rOCh();paintCoachHeat("cvAF",true,athVol);paintCoachHeat("cvAB",false,athVol)},100)}
 
 function rDCh(){
 const sel=document.getElementById("dSel");if(!sel)return;
@@ -936,12 +1230,12 @@ function a2d(id){const e=gx(id);if(!e)return;cDay(cD).exercises.push(e.t==="card
 // ===== ADD OVERLAY =====
 function showAdd(ctx){
 const el=document.getElementById("ovl");const st=ctx==="library"?"compound,isolation,mobility,stretch,foam roll,cardio":"compound,isolation,cardio";
-let h='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>'+(ctx==="library"?"Create exercise":"Add to "+cDay(cD).label)+'</h3><button class="bs" onclick="clO()">Close</button></div>';
+let h='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>'+(ctx==="library"?"Create exercise":"Add to "+cDay(cD).label)+'</h3><button class="bs" onclick="clO()">Close</button></div>';
 if(ctx!=="library")h+='<label>Search existing</label><input class="fi" id="aSr" placeholder="Type name or muscle..." oninput="rAS(\''+st+"','"+ctx+'\')" autocomplete="off"><div id="aSrR"></div><div style="border-top:1px solid var(--sb);margin:12px 0;font-size:12px;color:var(--w3);padding-top:8px">Or create new:</div>';
-h+='<label>Name</label><input class="fi" id="mN" placeholder="e.g. Bulgarian split squat"><label>Type</label><div class="gp" id="mTG"><button class="gpi a" onclick="pkT(this,\'compound\')">Compound</button><button class="gpi" onclick="pkT(this,\'isolation\')">Isolation</button><button class="gpi" onclick="pkT(this,\'mobility\')">Mobility</button><button class="gpi" onclick="pkT(this,\'stretch\')">Stretch</button><button class="gpi" onclick="pkT(this,\'foam roll\')">Foam roll</button><button class="gpi" onclick="pkT(this,\'cardio\')">Cardio</button></div><input type="hidden" id="mT" value="compound"><label>Primary muscle</label><div class="gp" id="mPG">'+["Cardio",...MS].map((m,i)=>'<button class="bpp'+(i===1?" a":"")+'" onclick="pkP(this,\''+m.replace(/'/g,"\\'")+'\')">'+m+'</button>').join("")+'</div><input type="hidden" id="mP" value="Chest"><label>Secondary muscles</label><div class="gp" id="mS2" style="max-height:80px;overflow-y:auto">'+MS.map(m=>'<button class="bpp" onclick="this.classList.toggle(\'a\')">'+m+'</button>').join('')+'</div>';
+h+='<label>Name</label><input class="fi" id="mN" placeholder="e.g. Bulgarian split squat" oninput="window._pickedExId=null"><label>Type</label><div class="gp" id="mTG"><button class="gpi a" onclick="event.stopPropagation();pkT(this,\'compound\')">Compound</button><button class="gpi" onclick="event.stopPropagation();pkT(this,\'isolation\')">Isolation</button><button class="gpi" onclick="event.stopPropagation();pkT(this,\'mobility\')">Mobility</button><button class="gpi" onclick="event.stopPropagation();pkT(this,\'stretch\')">Stretch</button><button class="gpi" onclick="event.stopPropagation();pkT(this,\'foam roll\')">Foam roll</button><button class="gpi" onclick="event.stopPropagation();pkT(this,\'cardio\')">Cardio</button></div><input type="hidden" id="mT" value="compound"><label>Primary muscle</label><div class="gp" id="mPG">'+["Cardio",...MS].map((m,i)=>'<button class="bpp'+(i===1?" a":"")+'" onclick="event.stopPropagation();pkP(this,\''+m.replace(/'/g,"\\'")+'\')">'+m+'</button>').join("")+'</div><input type="hidden" id="mP" value="Chest"><label>Secondary muscles</label><div class="gp" id="mS2" style="max-height:80px;overflow-y:auto">'+MS.map(m=>'<button class="bpp" onclick="event.stopPropagation();this.classList.toggle(\'a\')">'+m+'</button>').join('')+'</div>';
 if(ctx!=="library")h+='<label>Sets x Reps</label><div style="display:flex;gap:8px;align-items:center"><input class="fis" id="mSt" type="text" inputmode="numeric" value="3"><span style="color:var(--wht);font-size:16px">x</span><input class="fis" id="mRp" type="text" value="10" style="width:80px"></div><label>Rest (seconds)</label><input class="fi" id="mRst" type="text" inputmode="numeric" value="90" placeholder="e.g. 90" style="width:100px"><label>Superset group (optional)</label><input class="fi" id="mSS" type="text" placeholder="e.g. E or F" style="width:100px">';
 h+='<div style="margin-top:12px"><button class="bs bsa" onclick="svA(\''+ctx+'\')" style="width:100%;padding:12px;min-height:48px">Save</button></div></div></div>';
-el.innerHTML=h;el.style.display="block"}
+el.innerHTML=h;el.style.display="block";window._pickedExId=null}
 function pkT(b,v){document.querySelectorAll("#mTG .gpi").forEach(x=>x.classList.remove("a"));b.classList.add("a");document.getElementById("mT").value=v}
 function pkP(b,v){document.querySelectorAll("#mPG .bpp").forEach(x=>x.classList.remove("a"));b.classList.add("a");document.getElementById("mP").value=v}
 function clO(){document.getElementById("ovl").style.display="none";document.getElementById("ovl").innerHTML=""}
@@ -969,26 +1263,33 @@ function pkSR(id,ctx){
   window._pickedExId=id;
 }
 function svA(ctx){
-  // Check if user picked an existing exercise from search
+  const nm=(document.getElementById("mN").value||"").trim();
+  if(!nm){alert("Please enter an exercise name");return}
+  // Check if user picked an existing exercise from search AND hasn't changed the name
   if(window._pickedExId){
     const id=window._pickedExId;
-    window._pickedExId=null;
     const e=gx(id);
-    const sets=parseInt(document.getElementById("mSt")?.value)||3;
-    const reps=document.getElementById("mRp")?.value||"10";
-    const rst=parseInt(document.getElementById("mRst")?.value)||0;
-    const ssv=(document.getElementById("mSS")?.value||"").trim();
-    const item=e.t==="cardio"?{exId:id,sets:1,reps:reps}:{exId:id,sets:sets,reps:reps,rest:rst};
-    if(ssv)item.ss=ssv;
-    cDay(cD).exercises.push(item);
-    sv();clO();rView();
-    return;
+    if(e&&e.n===nm){
+      // Using the picked exercise as-is
+      window._pickedExId=null;
+      const sets=parseInt(document.getElementById("mSt")?.value)||3;
+      const reps=document.getElementById("mRp")?.value||"10";
+      const rst=parseInt(document.getElementById("mRst")?.value)||0;
+      const ssv=(document.getElementById("mSS")?.value||"").trim();
+      const item=e.t==="cardio"?{exId:id,sets:1,reps:reps}:{exId:id,sets:sets,reps:reps,rest:rst};
+      if(ssv)item.ss=ssv;
+      cDay(cD).exercises.push(item);
+      sv();clO();rView();
+      return;
+    }
+    // Name was changed — treat as new exercise creation
+    window._pickedExId=null;
   }
-  // Otherwise create new exercise
-  const nm=(document.getElementById("mN").value||"").trim();if(!nm)return;
+  // Create new exercise — add to library
   const ne={id:S.nxId++,n:nm,t:document.getElementById("mT").value,p:document.getElementById("mP").value,s:[...document.querySelectorAll("#mS2 .bpp.a")].map(b=>b.textContent),r:0};
   if(ne.t==="compound")ne.r=120;else if(ne.t==="isolation")ne.r=60;
   S.customEx.push(ne);
+  // Also add to current day's workout (unless opened from library tab)
   if(ctx!=="library"){
     const sets=parseInt(document.getElementById("mSt")?.value)||3;
     const reps=document.getElementById("mRp")?.value||"10";
@@ -1011,7 +1312,7 @@ function mds2(e,i){_di=i;const r=e.target.closest(".er");if(r)r.classList.add("d
 function editEx(i){
 const w=cDay(cD).exercises[i];const e=gx(w.exId);if(!e)return;
 const el=document.getElementById("ovl");
-el.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if(event.target===this&&this._md===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()" ontouchstart="this._ts=event.target" ontouchend="if(event.target===this&&this._ts===this)clO()"><div class="ovl-inner"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Edit exercise</h3><button class="bs" onclick="clO()">Close</button></div>'+
+el.innerHTML='<div class="ovl" onclick="if(event.target===this)clO()"><div class="ovl-inner" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>Edit exercise</h3><button class="bs" onclick="clO()">Close</button></div>'+
 '<label>Exercise</label><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:600;font-size:14px;flex:1" id="edExName">'+e.n+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.p+'</span></div>'+
 '<input class="fi" id="edSearch" placeholder="Search to swap exercise..." oninput="editSearch('+i+')" autocomplete="off" style="margin-bottom:4px"><div id="edSearchRes"></div>'+
 '<input type="hidden" id="edExId" value="'+w.exId+'">'+
@@ -1023,6 +1324,7 @@ el.innerHTML='<div class="ovl" onmousedown="this._md=event.target" onmouseup="if
 )+
 '<label>Rest (seconds)</label><input class="fi" id="edRest" type="text" inputmode="numeric" value="'+(w.rest||0)+'" placeholder="e.g. 90">'+
 '<label>Superset group (optional)</label><input class="fi" id="edSS" value="'+(w.ss||"")+'" placeholder="e.g. E or F">'+
+'<label>Coach note (visible to athlete)</label><input class="fi" id="edNote" value="'+(w.coachNote||"")+'" placeholder="e.g. Go lighter, focus on form">'+
 '<div style="margin-top:12px"><button class="bs bsa" onclick="saveEdit('+i+')" style="width:100%;padding:12px;min-height:48px">Save changes</button></div>'+
 '</div></div>';
 el.style.display="block"}
@@ -1051,6 +1353,8 @@ w.reps=document.getElementById("edReps").value||"10";
 w.rest=parseInt(document.getElementById("edRest").value)||0;
 const ss=(document.getElementById("edSS").value||"").trim();
 if(ss)w.ss=ss;else delete w.ss;
+const note=(document.getElementById("edNote").value||"").trim();
+if(note)w.coachNote=note;else delete w.coachNote;
 sv();clO();rView()}
 
 // Feature 3: Input focus/change handlers for styling
@@ -1058,15 +1362,16 @@ sv();clO();rView()}
 function toggleBW(ei,si,cb){
   const wk=wlk(cD);
   if(!S.wlogs[wk])S.wlogs[wk]={};
-  if(!S.wlogs[wk][ei])S.wlogs[wk][ei]={};
-  if(!S.wlogs[wk][ei][si])S.wlogs[wk][ei][si]={};
-  S.wlogs[wk][ei][si].bw=cb.checked;
+  var exId=cDay(cD).exercises[ei]?.exId;var key=exId?"ex_"+exId:ei;
+  if(!S.wlogs[wk][key])S.wlogs[wk][key]={};
+  if(!S.wlogs[wk][key][si])S.wlogs[wk][key][si]={};
+  S.wlogs[wk][key][si].bw=cb.checked;
   if(cb.checked){
-    S.wlogs[wk][ei][si].lbs="BW";
+    S.wlogs[wk][key][si].lbs="BW";
     var lbsInput=document.getElementById("lbs_"+ei+"_"+si);
     if(lbsInput){lbsInput.value="BW";lbsInput.disabled=true;lbsInput.style.opacity=".4"}
   }else{
-    S.wlogs[wk][ei][si].lbs="";
+    S.wlogs[wk][key][si].lbs="";
     var lbsInput=document.getElementById("lbs_"+ei+"_"+si);
     if(lbsInput){lbsInput.value="";lbsInput.disabled=false;lbsInput.style.opacity="1"}
   }
@@ -1096,17 +1401,28 @@ let restPopupInt=null,restPopupSec=0,restPopupTotal=0;
 
 function completeSet(ei,si,restSec,btn){
   const wk=wlk(cD);
-  if(!S.wlogs[wk])S.wlogs[wk]={};if(!S.wlogs[wk][ei])S.wlogs[wk][ei]={};if(!S.wlogs[wk][ei][si])S.wlogs[wk][ei][si]={};
-  S.wlogs[wk][ei][si].done=true;btn.classList.add("done");sv();
+  var exId=cDay(cD).exercises[ei]?.exId;var key=exId?"ex_"+exId:ei;
+  if(!S.wlogs[wk])S.wlogs[wk]={};if(!S.wlogs[wk][key])S.wlogs[wk][key]={};if(!S.wlogs[wk][key][si])S.wlogs[wk][key][si]={};
+  S.wlogs[wk][key][si].done=true;btn.classList.add("done");sv();
+  // Haptic feedback
+  if(navigator.vibrate)navigator.vibrate(30);
+  // Pop animation
+  btn.style.transform="scale(1.3)";setTimeout(function(){btn.style.transform=""},200);
   // Auto-fill from inputs if not already saved
   const row=btn.closest(".set-row");
   if(row){
     const inputs=row.querySelectorAll(".set-input");
-    if(inputs[0]&&inputs[0].value&&!S.wlogs[wk][ei][si].lbs){S.wlogs[wk][ei][si].lbs=inputs[0].value;sv()}
-    if(inputs[1]&&inputs[1].value&&!S.wlogs[wk][ei][si].reps){S.wlogs[wk][ei][si].reps=inputs[1].value;sv()}
+    if(inputs[0]&&inputs[0].value&&!S.wlogs[wk][key][si].lbs){S.wlogs[wk][key][si].lbs=inputs[0].value;sv()}
+    if(inputs[1]&&inputs[1].value&&!S.wlogs[wk][key][si].reps){S.wlogs[wk][key][si].reps=inputs[1].value;sv()}
   }
   const e=gx(cDay(cD).exercises[ei]?.exId);
   if(restSec>0)showRestPopup(restSec,e?e.n:"");
+  // Check if all sets done for auto-collapse
+  var exW=cDay(cD).exercises[ei];
+  if(exW&&isExAllDone(wk,ei,exW.sets)){
+    if(navigator.vibrate)navigator.vibrate([30,50,30]);
+    setTimeout(function(){rExec()},400);
+  }
 }
 
 // Feature 5: Workout start/end timestamps
@@ -1171,10 +1487,10 @@ function cancelWorkout(){
 
 function endWorkout(){
   const wk=wlk(cD);
-  if(!S.wlogs[wk])S.wlogs[wk]={};
-  if(!S.wlogs[wk]._meta)S.wlogs[wk]._meta={};
+  if(!S.wlogs[wk]||!S.wlogs[wk]._meta||!S.wlogs[wk]._meta.startTime){return}
+  if(S.wlogs[wk]._meta.endTime){return}
   S.wlogs[wk]._meta.endTime=Date.now();
-  const startT=S.wlogs[wk]._meta.startTime||Date.now();
+  const startT=S.wlogs[wk]._meta.startTime;
   const pausedTotal=S.wlogs[wk]._meta.pausedTotal||0;
   const duration=Math.floor((Date.now()-startT-pausedTotal)/1000);
   clearInterval(wkClockInt);
@@ -1184,6 +1500,20 @@ function endWorkout(){
     weights:JSON.parse(JSON.stringify(S.wlogs[wk]||{})),
     startTime:startT,endTime:Date.now(),duration:duration
   });
+  // Reset workout state: clear meta so workout must be restarted
+  delete S.wlogs[wk]._meta.startTime;
+  delete S.wlogs[wk]._meta.endTime;
+  delete S.wlogs[wk]._meta.paused;
+  delete S.wlogs[wk]._meta.pauseStart;
+  delete S.wlogs[wk]._meta.pausedTotal;
+  // Reset all done flags (checkboxes)
+  Object.entries(S.wlogs[wk]).forEach(([k,v])=>{
+    if(k==="_meta")return;
+    if(typeof v==="object"&&v!==null&&!Array.isArray(v)){
+      Object.values(v).forEach(set=>{if(set&&typeof set==="object")delete set.done});
+    }
+    if(Array.isArray(v)){v.forEach(set=>{if(set&&typeof set==="object")delete set.done})}
+  });
   sv();
   const mins=Math.floor(duration/60);
   alert("Workout saved: "+cDay(cD).label+"\nDuration: "+mins+" minutes");
@@ -1191,7 +1521,18 @@ function endWorkout(){
 }
 
 // Old timer removed - replaced by per-set rest popup
-function swP(p){curMode=p;document.querySelectorAll(".pb").forEach(b=>b.classList.remove("a"));event.target.closest(".pb").classList.add("a");rView()}
+function swP(p){curMode=p;if(p==="a"){selectedAthlete=null;athleteData=null}document.querySelectorAll(".pb").forEach(b=>b.classList.remove("a"));event.target.closest(".pb").classList.add("a");rView()}
+
+// Dark/light mode toggle
+function toggleTheme(){
+  document.documentElement.classList.toggle("light");
+  var isLight=document.documentElement.classList.contains("light");
+  var btn=document.getElementById("themeBtn");
+  if(btn)btn.textContent=isLight?"☀️":"🌙";
+  try{localStorage.setItem("forge_theme",isLight?"light":"dark")}catch(e){}
+}
+// Restore saved theme on load
+try{if(localStorage.getItem("forge_theme")==="light")document.documentElement.classList.add("light")}catch(e){}
 
 init();
 // Expose functions for onclick handlers
@@ -1248,6 +1589,7 @@ window.rCDCh = rCDCh;
 window.rCOCh = rCOCh;
 window.rCal = rCal;
 window.rCoachDash = rCoachDash;
+window.rCoachHome = rCoachHome;
 window.renderCoachCalendar = renderCoachCalendar;
 window.paintCoachHeat = paintCoachHeat;
 window.rCoachRec = rCoachRec;
@@ -1275,6 +1617,8 @@ window.showLinkCoach = showLinkCoach;
 window.showLogin = showLogin;
 window.showRestPopup = showRestPopup;
 window.showRoleSelect = showRoleSelect;
+window.showOnboarding = showOnboarding;
+window.toggleTheme = toggleTheme;
 window.showWeightPrompt = showWeightPrompt;
 window.skipRest = skipRest;
 window.startWkClock = startWkClock;
@@ -1286,6 +1630,9 @@ window.tde2 = tde2;
 window.tdm2 = tdm2;
 window.tds2 = tds2;
 window.toggleSetDone = toggleSetDone;
+window.toggleWarmupDone = toggleWarmupDone;
+window.toggleExCollapse = toggleExCollapse;
+window.scrollToNextEx = scrollToNextEx;
 window.unlinkSelf = unlinkSelf;
 window.updCtxWt = updCtxWt;
 
