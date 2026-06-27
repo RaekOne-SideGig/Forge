@@ -13,7 +13,7 @@ export function ld(n) {
   if (r) try { S = JSON.parse(r); } catch (e) { S = null; }
   if (!S) S = {
     user: n, weight: "", role: "", inviteCode: "", linkedCoach: "",
-    athletes: [], days: defDays(), customEx: [], nxId: 400, ltf: "all",
+    athletes: [], days: defDays(), customEx: [], nxId: 1000, ltf: "all",
     chk: { bw: "", steps: "", sleep: "", cal: "", exMin: "", prot: "" },
     log: [], wlogs: {}, ncItems: DEF_NC.slice(), recLog: {}
   };

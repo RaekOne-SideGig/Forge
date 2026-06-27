@@ -151,6 +151,7 @@ async function init(){
       S.photoURL=user.photoURL||"";
       svLocal();
       const updated=await loadFromFb(S, svLocal);
+      if(S.nxId<1000){S.nxId=1000;svLocal()}
       if(updated)ld(displayName);
       S.user=displayName;S.email=user.email||"";S.photoURL=user.photoURL||"";
       svLocal();
