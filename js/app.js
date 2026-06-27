@@ -1217,27 +1217,40 @@ async function relinkCoach(){
     alert("Linked to "+S.coachName);
   }catch(e){alert("Error: "+e.message)}
 }
+var _libPage=0;
 function rLib(){
 const el=document.getElementById("cC");const f=S.ltf;
 const ts=["all","compound","isolation","mobility","stretch","foam roll","cardio"];
-let h='<div class="cd"><div class="ch"><h3>Exercise Library</h3><button class="bs bsa" onclick="showAdd(\'library\')">+ New</button></div><input class="fi" placeholder="Search by name or muscle..." id="libS" oninput="rLib()" style="margin-bottom:8px"><div class="tts">'+ts.map(t=>'<button class="tt'+(f===t?' a':'')+'" onclick="S.ltf=\''+t+'\';sv();rLib()">'+t+'</button>').join("")+'</div>';
-const q=(document.getElementById("libS")?.value||"").toLowerCase();
+var curQ=document.getElementById("libS")?.value||"";
+let h='<div class="cd"><div class="ch"><h3>Exercise Library</h3><button class="bs bsa" onclick="showAdd(\'library\')">+ New</button></div><input class="fi" placeholder="Search by name or muscle..." id="libS" value="'+curQ.replace(/"/g,"&quot;")+'" oninput="_libPage=0;rLib()" style="margin-bottom:8px"><div class="tts">'+ts.map(t=>'<button class="tt'+(f===t?' a':'')+'" onclick="S.ltf=\''+t+'\';_libPage=0;sv();rLib()">'+t+'</button>').join("")+'</div>';
+const q=curQ.toLowerCase();
 const all=aDB();
 const ls=all.filter(e=>{if(f!=="all"&&e.t!==f)return false;if(q)return(e.n+" "+e.p+" "+(e.s||[]).join(" ")).toLowerCase().includes(q);return true});
-var showCount=window._libShowCount||50;
-h+='<div class="lc">'+ls.length+" of "+all.length+(S.customEx.length?' ('+S.customEx.length+' custom)':'')+'</div>';
+var pageSize=50;
+var totalPages=Math.max(1,Math.ceil(ls.length/pageSize));
+if(_libPage>=totalPages)_libPage=totalPages-1;
+var start=_libPage*pageSize;
+var page=ls.slice(start,start+pageSize);
 var customIds=new Set(S.customEx.map(function(e){return e.id}));
-h+=ls.slice(0,showCount).map(function(e){
+h+='<div class="lc">'+ls.length+" exercises"+(S.customEx.length?' ('+S.customEx.length+' custom)':'')+'</div>';
+h+=page.map(function(e){
   var isCustom=customIds.has(e.id);
   var row='<div class="er"><span class="en">'+e.n+(isCustom?'<span style="font-size:9px;color:var(--amb);margin-left:4px">custom</span>':'')+'</span><span class="bg '+tB(e.t)+'" style="font-size:10px">'+e.t+'</span><span class="ed">'+e.p+(e.s.length?" + "+e.s.join(", "):"")+'</span><button class="bs" onclick="a2d('+e.id+')">+ Add</button>';
   if(isCustom)row+='<button class="dbtn" onclick="delCustomEx('+e.id+')">Del</button>';
   row+='</div>';
   return row;
 }).join("");
-if(ls.length>showCount){
-  h+='<button class="bs" onclick="window._libShowCount='+(showCount+50)+';rLib()" style="width:100%;margin-top:8px">Show more ('+Math.min(50,ls.length-showCount)+' more)</button>';
+if(totalPages>1){
+  h+='<div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:10px">';
+  h+='<button class="bs" onclick="_libPage--;rLib()"'+(_libPage<=0?' disabled style="opacity:.3;pointer-events:none"':'')+'>← Prev</button>';
+  h+='<span style="font-size:12px;color:var(--w3)">'+(_libPage+1)+' / '+totalPages+'</span>';
+  h+='<button class="bs" onclick="_libPage++;rLib()"'+(_libPage>=totalPages-1?' disabled style="opacity:.3;pointer-events:none"':'')+'>Next →</button>';
+  h+='</div>';
 }
-h+='</div>';el.innerHTML=h}
+h+='</div>';el.innerHTML=h;
+// Restore cursor position in search field
+var si=document.getElementById("libS");if(si&&curQ){si.focus();si.setSelectionRange(curQ.length,curQ.length)}
+}
 function delCustomEx(id){
   if(!confirm("Delete this custom exercise?"))return;
   S.customEx=S.customEx.filter(function(e){return e.id!==id});
